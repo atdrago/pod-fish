@@ -83,20 +83,18 @@ The test passes when `time_total` is at least 7200 seconds and BUTT did not reco
 
 ### Soak result
 
-<!-- TODO: Fill in this table when the soak ends. Do not report a pass without both times. -->
-
-| Item                                    | Result       |
-| --------------------------------------- | ------------ |
-| Soak start (EST)                        | NOT RECORDED |
-| Soak end (EST)                          | NOT RECORDED |
-| Output of the listener curl             | NOT RECORDED |
-| BUTT reconnects during the soak         | NOT RECORDED |
-| BUTT method that worked over TLS        | NOT RECORDED |
-| `/status-json.xsl` answer on `pod.fish` | NOT RECORDED |
-| Mount `Content-Type` on `pod.fish`      | NOT RECORDED |
-| `/admin/stats` answer on `pod.fish`     | NOT RECORDED |
-| Pass or fail                            | NOT RECORDED |
-| Fallback taken                          | NOT RECORDED |
+| Item                                    | Result                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Soak start (EST)                        | Source 2026-11-04 12:10:45 EST. Listener 2026-11-04 12:26:25 EST.                                                                                                                                                                                                                |
+| Soak end (EST)                          | Both 2026-11-04 14:24:36 EST.                                                                                                                                                                                                                                                    |
+| Output of the listener curl             | `200 7091.576714`, curl exit 0                                                                                                                                                                                                                                                   |
+| BUTT reconnects during the soak         | None seen. One `stream_start`, and the access log shows one PUT that lasted 8031 seconds.                                                                                                                                                                                        |
+| BUTT method that worked over TLS        | PUT. Access log: `"PUT /pod-monster-cast/live.mp3 HTTP/1.1" 200 516 "-" "butt 1.47.0" 8031`.                                                                                                                                                                                     |
+| `/status-json.xsl` answer on `pod.fish` | 200. `source` is present with a source and absent with none.                                                                                                                                                                                                                     |
+| Mount `Content-Type` on `pod.fish`      | `audio/mpeg`, 200, HTTP/1.1, no redirect                                                                                                                                                                                                                                         |
+| `/admin/stats` answer on `pod.fish`     | 401                                                                                                                                                                                                                                                                              |
+| Pass or fail                            | Pass, by the decision of the owner. The owner stopped BUTT at 14:24:36 EST. The source held 8031 seconds. The listener held 7091.6 seconds, 108.4 seconds short of 7200. The owner restarted `coreaudiod` multiple times during the soak, and the access log shows no reconnect. |
+| Fallback taken                          | None                                                                                                                                                                                                                                                                             |
 
 ### Fallbacks
 
