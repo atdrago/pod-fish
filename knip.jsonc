@@ -1,5 +1,3 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
-  // The Friday path adds this import in U4. Remove the name when its first import lands.
-  "ignoreDependencies": ["aws4fetch"]
+  "$schema": "https://unpkg.com/knip@6/schema.json"
 }

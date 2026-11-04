@@ -253,6 +253,7 @@ export const showSchema = v.strictObject({
   language: v.optional(v.string()),
   copyright: v.optional(v.string()),
   ttl: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  artwork: v.optional(v.strictObject({ file: sidecarPathSchema })),
   image: v.optional(v.strictObject({ url: urlSchema, title: v.string(), link: urlSchema })),
   itunes: v.optional(
     v.strictObject({

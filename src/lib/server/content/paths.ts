@@ -19,3 +19,4 @@ export const LIVE_FOLDER = 'live';
 export const PUBLISH_FOLDER = 'publish';
 export const EPISODE_FILE = 'episode.json';
 export const LIVE_FILE = 'live.json';
+export const MEDIA_FOLDER = 'media';

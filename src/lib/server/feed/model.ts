@@ -17,12 +17,21 @@ export type FeedConfig = {
 
 type ItemFolder = 'episodes' | 'live';
 
-export type SidecarReference = { folder: ItemFolder; slug: string; file: string; source: string };
+export type SidecarReference = {
+  /* The folder that must hold the file, relative to the content folder. */
+  itemFolder: string;
+  keySlug: string;
+  file: string;
+  source: string;
+};
 
 /* The sha256 of each sidecar file, by its path in the content folder. */
 export type SidecarHashes = ReadonlyMap<string, string>;
 
 const APP_NAME = 'pod-fish';
+
+/* The object key segment of the files that belong to the channel, not to one item. */
+const CHANNEL_KEY_SLUG = 'show';
 
 const sidecarSource = (folder: ItemFolder, slug: string, file: string): string =>
   `${folder}/${slug}/${file}`;
@@ -34,7 +43,7 @@ const sidecarFilesOf = (tags: ItemTags | undefined): string[] =>
     ...(tags?.images ?? []).map((image) => image.file)
   ].filter((file) => file !== undefined);
 
-const publishedEpisodes = (snapshot: ContentSnapshot): ContentSnapshot['episodes'] =>
+export const publishedEpisodes = (snapshot: ContentSnapshot): ContentSnapshot['episodes'] =>
   snapshot.episodes
     .filter(({ record }) => !record.draft)
     .toSorted(
@@ -59,17 +68,41 @@ export const listSidecarReferences = (snapshot: ContentSnapshot): SidecarReferen
   ): SidecarReference[] =>
     entries.flatMap(({ slug, record }) =>
       sidecarFilesOf(record.podcast).map((file) => ({
-        folder,
-        slug,
+        itemFolder: `${folder}/${slug}`,
+        keySlug: slug,
         file,
         source: sidecarSource(folder, slug, file)
       }))
     );
 
+  const artworkFile = snapshot.show?.artwork?.file;
+
   return [
+    ...(artworkFile === undefined
+      ? []
+      : [{ itemFolder: '.', keySlug: CHANNEL_KEY_SLUG, file: artworkFile, source: artworkFile }]),
     ...references('episodes', publishedEpisodes(snapshot)),
     ...references('live', publishedLiveItems(snapshot))
   ];
+};
+
+const hashedFileUrl = (
+  source: string,
+  keySlug: string,
+  file: string,
+  config: FeedConfig,
+  sidecarHashes: SidecarHashes
+): string => {
+  const sha256 = sidecarHashes.get(source);
+
+  if (sha256 === undefined) {
+    throw new Error(`${source} has no hash, so the feed cannot name its URL.`);
+  }
+
+  return publicObjectUrl(
+    config.mediaBaseUrl,
+    mediaObjectKey(config.objectKeyPrefix, keySlug, sha256, file)
+  );
 };
 
 const toItemTags = (
@@ -79,19 +112,8 @@ const toItemTags = (
   config: FeedConfig,
   sidecarHashes: SidecarHashes
 ) => {
-  const sidecarUrl = (file: string): string => {
-    const source = sidecarSource(folder, slug, file);
-    const sha256 = sidecarHashes.get(source);
-
-    if (sha256 === undefined) {
-      throw new Error(`${source} has no hash, so the feed cannot name its URL.`);
-    }
-
-    return publicObjectUrl(
-      config.mediaBaseUrl,
-      mediaObjectKey(config.objectKeyPrefix, slug, sha256, file)
-    );
-  };
+  const sidecarUrl = (file: string): string =>
+    hashedFileUrl(sidecarSource(folder, slug, file), slug, file, config, sidecarHashes);
 
   const urlOf = (url: string | undefined, file: string | undefined): string => {
     if (url !== undefined) {
@@ -186,13 +208,23 @@ export const toFeedInput = (
   builtAt: Date,
   sidecarHashes: SidecarHashes
 ): FeedInput => {
-  const { revision, podcast, ...channel } = show;
+  const { revision, podcast, artwork, ...channel } = show;
+  const artworkUrl =
+    artwork === undefined
+      ? undefined
+      : hashedFileUrl(artwork.file, CHANNEL_KEY_SLUG, artwork.file, config, sidecarHashes);
   const liveItems = publishedLiveItems(snapshot).map(({ slug, record }) =>
     toLiveItem(slug, record, config, sidecarHashes)
   );
 
   return {
     ...channel,
+    ...(artworkUrl === undefined
+      ? {}
+      : {
+          image: { url: artworkUrl, title: show.title, link: show.link },
+          itunes: { ...channel.itunes, image: artworkUrl }
+        }),
     lastBuildDate: builtAt,
     generator: APP_NAME,
     atom: { links: [{ href: config.feedUrl, rel: 'self', type: 'application/rss+xml' }] },

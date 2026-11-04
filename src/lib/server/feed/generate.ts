@@ -4,7 +4,7 @@ import type { ContentSnapshot } from '$lib/server/content/store';
 import { insertLiveItemChildren } from './liveItem';
 import { publishedLiveItems, toFeedInput, type FeedConfig, type SidecarHashes } from './model';
 
-export type GeneratedFeed = { xml: string; bytes: Buffer; sha256: string };
+export type GeneratedFeed = { xml: string; bytes: Buffer<ArrayBuffer>; sha256: string };
 
 export const sha256Of = (bytes: Uint8Array): string =>
   createHash('sha256').update(bytes).digest('hex');

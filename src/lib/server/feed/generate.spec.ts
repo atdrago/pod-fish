@@ -275,6 +275,41 @@ describe('the basic fixture', () => {
   });
 });
 
+describe('the channel artwork', () => {
+  it('sets the RSS image and the iTunes image, and lists itself as a file to upload', async () => {
+    await cp(join(FIXTURES, 'friday-minimum'), folder, { recursive: true });
+
+    const path = join(folder, 'show.json');
+    const show = JSON.parse(await readFile(path, 'utf8'));
+
+    await writeFile(path, JSON.stringify({ ...show, artwork: { file: 'media/artwork.png' } }));
+
+    const snapshot = await createContentStore(folder).readSnapshot();
+
+    expect(listSidecarReferences(snapshot)).toStrictEqual([
+      {
+        itemFolder: '.',
+        keySlug: 'show',
+        file: 'media/artwork.png',
+        source: 'media/artwork.png'
+      }
+    ]);
+
+    const { xml } = generateFeed(
+      snapshot,
+      CONFIG,
+      BUILT_AT,
+      new Map([['media/artwork.png', SIDECAR_HASH]])
+    );
+    const url = 'https://example.com/placeholder-show/media/show/ffffffffffffffff-artwork.png';
+
+    expect(xml).toContain(`<itunes:image href="${url}"/>`);
+    expect(xml).toContain(`<url>${url}</url>`);
+    expect(xml).toContain('<title>Placeholder Show</title>');
+    expect(() => SyntaxValidator.validate(xml)).not.toThrow();
+  });
+});
+
 describe('determinism', () => {
   it('produces the same bytes and the same sha256 from the same folder and clock', async () => {
     const first = await generateFromFixture('full');

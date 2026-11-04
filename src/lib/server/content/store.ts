@@ -384,6 +384,8 @@ export const createContentStore = (contentFolder: string) => {
   };
 };
 
+export type ContentStore = ReturnType<typeof createContentStore>;
+
 const rejectSlug = (relativeKey: string): Promise<WriteResult> => {
   log.warn('content_write_path_rejected', { key: relativeKey });
 
