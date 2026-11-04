@@ -1,0 +1,10 @@
+{
+  "revision": 3,
+  "title": "Placeholder Show",
+  "link": "https://example.com/placeholder-show",
+  "description": "A placeholder show for the tests.",
+  "language": "en",
+  "ttl": 5,
+  "itunes": { "author": "Placeholder Host", "explicit": false, "type": "episodic" },
+  "podcast": { "guid": "00000000-0000-5000-8000-000000000000", "medium": "podcast" }
+}

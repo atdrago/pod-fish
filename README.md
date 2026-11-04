@@ -26,9 +26,13 @@ Then fill `.env`. It is gitignored. Never commit it.
 
 ```sh
 npm run dev      # the app at http://127.0.0.1:5174
-npm run build    # the production build
+npm run build    # the production build, reads .env
 npm start        # the production build at http://127.0.0.1:5174, reads .env
 ```
+
+`npm run build` and `npm start` fail until every required value in `.env` is set, and the error names each missing value. SvelteKit validates the registry in `src/env.ts` when it analyzes the build and when the server starts.
+
+The app listens on `127.0.0.1` only. A request with another `Host` is refused, and so is a write request from another `Origin` (`src/hooks.server.ts`).
 
 ## Quality gates
 

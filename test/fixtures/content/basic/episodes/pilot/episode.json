@@ -1,0 +1,14 @@
+{
+  "revision": 1,
+  "title": "Pilot",
+  "guid": "placeholder-pilot-guid",
+  "description": "The first episode.",
+  "pubDate": "2026-11-01T12:00:00.000Z",
+  "media": {
+    "file": "pilot.mp3",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000abc",
+    "length": 1234,
+    "type": "audio/mpeg",
+    "durationSeconds": 30
+  }
+}
