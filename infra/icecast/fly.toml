@@ -1,0 +1,41 @@
+# The stream server (KTD8). The app name, the domain, and every other value that
+# differs between installs stay out of this file. The deploy command in README.md
+# supplies them.
+#
+# Fly terminates TLS and forwards plain TCP to Icecast, so no HTTP proxy sits in the
+# stream path. HTTP/1.1 is the only ALPN protocol, because Icecast speaks HTTP/1.x
+# only. No service answers on port 80, so no plaintext path exists.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls"]
+    tls_options = { alpn = ["http/1.1"] }
+
+  # Fly's default hard limit is 25 connections. This limit stays above the Icecast
+  # clients limit, which is the listener cap plus 10.
+  [services.concurrency]
+    type = "connections"
+    soft_limit = 125
+    hard_limit = 150
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+[[restart]]
+  policy = "always"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

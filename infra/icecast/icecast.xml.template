@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!--
+  The entrypoint renders this file and XML-escapes each value. Keep this file
+  valid for Icecast 2.4.4 and for 2.5.0, because the two Dockerfiles share it.
+-->
+<icecast>
+    <location>@ICECAST_LOCATION@</location>
+    <admin>@ICECAST_ADMIN@</admin>
+    <hostname>@ICECAST_HOSTNAME@</hostname>
+
+    <limits>
+        <!-- The entrypoint sets this value above the listener cap, so that the
+             status page and the admin page still answer at the cap. -->
+        <clients>@ICECAST_CLIENT_LIMIT@</clients>
+        <sources>1</sources>
+    </limits>
+
+    <authentication>
+        <source-password>@ICECAST_SOURCE_PASSWORD@</source-password>
+        <relay-password>@ICECAST_RELAY_PASSWORD@</relay-password>
+        <admin-user>admin</admin-user>
+        <admin-password>@ICECAST_ADMIN_PASSWORD@</admin-password>
+    </authentication>
+
+    <listen-socket>
+        <port>8000</port>
+        <bind-address>0.0.0.0</bind-address>
+    </listen-socket>
+
+    <mount type="normal">
+        <mount-name>@ICECAST_MOUNT@</mount-name>
+        <max-listeners>@ICECAST_CLIENT_CAP@</max-listeners>
+        <public>0</public>
+        <type>audio/mpeg</type>
+    </mount>
+
+    <paths>
+        <logdir>/var/lib/icecast</logdir>
+        <webroot>@ICECAST_SHARE_DIRECTORY@/web</webroot>
+        <adminroot>@ICECAST_SHARE_DIRECTORY@/admin</adminroot>
+    </paths>
+
+    <logging>
+        <!-- A dash sends the log to stderr, and no file grows on the machine. -->
+        <accesslog>-</accesslog>
+        <errorlog>-</errorlog>
+        <loglevel>information</loglevel>
+    </logging>
+
+    <security>
+        <chroot>0</chroot>
+    </security>
+</icecast>
