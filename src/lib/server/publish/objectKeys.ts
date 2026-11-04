@@ -14,3 +14,23 @@ export const feedObjectKey = (feedUrl: string, objectKeyPrefix: string): string 
 
   return key;
 };
+
+const SHA256_PREFIX_LENGTH = 16;
+
+/*
+	The hash in the key makes a media object immutable: new bytes get a new key, so
+	the long cache lifetime of a media object can never serve an old file (KTD6).
+*/
+export const mediaObjectKey = (
+  objectKeyPrefix: string,
+  slug: string,
+  sha256: string,
+  file: string
+): string => {
+  const fileName = file.slice(file.lastIndexOf('/') + 1);
+
+  return `${objectKeyPrefix}/media/${slug}/${sha256.slice(0, SHA256_PREFIX_LENGTH)}-${fileName}`;
+};
+
+export const publicObjectUrl = (mediaBaseUrl: string, key: string): string =>
+  `${mediaBaseUrl.replace(/\/+$/, '')}/${key}`;

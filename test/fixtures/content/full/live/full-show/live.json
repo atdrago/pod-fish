@@ -1,0 +1,16 @@
+{
+  "revision": 1,
+  "title": "Full show",
+  "guid": "placeholder-full-show-guid",
+  "description": "A live show.",
+  "status": "live",
+  "start": "2026-11-06T20:00:00-05:00",
+  "end": "2026-11-06T22:00:00-05:00",
+  "durationMinutes": 120,
+  "contentLink": { "href": "https://example.com/every-tag", "display": "Listen live" },
+  "enclosure": { "url": "https://example.com/live.mp3", "type": "audio/mpeg" },
+  "podcast": {
+    "persons": [{ "display": "Placeholder Host" }],
+    "chat": { "server": "irc.example.com", "protocol": "irc" }
+  }
+}

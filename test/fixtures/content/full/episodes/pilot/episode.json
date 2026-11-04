@@ -1,0 +1,57 @@
+{
+  "revision": 1,
+  "title": "Pilot",
+  "guid": "placeholder-pilot-guid",
+  "description": "The first episode.",
+  "pubDate": "2026-11-01T12:00:00.000Z",
+  "link": "https://example.com/every-tag/pilot",
+  "media": {
+    "file": "pilot.mp3",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000abc",
+    "length": 1234,
+    "type": "audio/mpeg",
+    "durationSeconds": 30
+  },
+  "itunes": { "title": "Pilot", "episodeType": "full", "explicit": false },
+  "podcast": {
+    "transcripts": [{ "file": "pilot.vtt", "type": "text/vtt", "language": "en" }],
+    "chapters": { "file": "pilot.chapters.json", "type": "application/json+chapters" },
+    "soundbites": [{ "startTime": 5, "duration": 10, "display": "The good part" }],
+    "persons": [{ "display": "Placeholder Guest", "role": "guest" }],
+    "locations": [{ "display": "Placeholder City" }],
+    "season": { "number": 1, "name": "One" },
+    "episode": { "number": 1, "display": "Pilot" },
+    "license": { "display": "cc-by-4.0" },
+    "alternateEnclosures": [
+      {
+        "type": "audio/opus",
+        "length": 1000,
+        "bitrate": 64000,
+        "sources": [{ "uri": "https://example.com/pilot.opus" }],
+        "integrity": { "type": "sri", "value": "placeholder-integrity" }
+      }
+    ],
+    "values": [
+      {
+        "type": "lightning",
+        "method": "keysend",
+        "valueRecipients": [
+          { "name": "Guest", "type": "node", "address": "placeholder-node-address", "split": 100 }
+        ],
+        "valueTimeSplits": [
+          {
+            "startTime": 10,
+            "duration": 20,
+            "valueRecipients": [
+              { "type": "node", "address": "placeholder-node-address", "split": 100 }
+            ]
+          }
+        ]
+      }
+    ],
+    "images": [{ "file": "pilot.png", "alt": "Pilot art" }],
+    "socialInteracts": [{ "protocol": "activitypub", "uri": "https://example.com/post" }],
+    "txts": [{ "display": "placeholder-item-txt" }],
+    "chat": { "server": "irc.example.com", "protocol": "irc" }
+  }
+}

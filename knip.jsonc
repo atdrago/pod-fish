@@ -1,6 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  // The Friday path adds these imports unit by unit. Remove each name when its first import lands:
-  // feedsmith and fast-xml-parser in U3, aws4fetch in U4.
-  "ignoreDependencies": ["aws4fetch", "fast-xml-parser", "feedsmith"]
+  // The Friday path adds this import in U4. Remove the name when its first import lands.
+  "ignoreDependencies": ["aws4fetch"]
 }

@@ -1,0 +1,67 @@
+{
+  "revision": 1,
+  "title": "Every Tag",
+  "link": "https://example.com/every-tag",
+  "description": "A show that sets every tag.",
+  "language": "en",
+  "copyright": "Placeholder",
+  "ttl": 5,
+  "image": {
+    "url": "https://example.com/cover.png",
+    "title": "Every Tag",
+    "link": "https://example.com/every-tag"
+  },
+  "itunes": {
+    "author": "Placeholder Host",
+    "explicit": false,
+    "type": "episodic",
+    "image": "https://example.com/cover.png",
+    "categories": [{ "text": "Technology" }],
+    "owner": { "name": "Placeholder Host", "email": "user@example.com" }
+  },
+  "podcast": {
+    "locked": { "value": true, "owner": "user@example.com" },
+    "fundings": [{ "url": "https://example.com/fund", "display": "Fund the show" }],
+    "persons": [{ "display": "Placeholder Host", "role": "host", "group": "cast" }],
+    "locations": [{ "display": "Placeholder City", "geo": "geo:30.0,-90.0" }],
+    "trailers": [
+      {
+        "display": "The trailer",
+        "url": "https://example.com/trailer.mp3",
+        "pubDate": "2026-11-01T12:00:00.000Z",
+        "length": 1234,
+        "type": "audio/mpeg"
+      }
+    ],
+    "license": { "display": "cc-by-4.0", "url": "https://example.com/license" },
+    "guid": "00000000-0000-5000-8000-000000000000",
+    "values": [
+      {
+        "type": "lightning",
+        "method": "keysend",
+        "suggested": 0.00000005,
+        "valueRecipients": [
+          { "name": "Host", "type": "node", "address": "placeholder-node-address", "split": 100 }
+        ],
+        "valueTimeSplits": [
+          {
+            "startTime": 10,
+            "duration": 20,
+            "remotePercentage": 50,
+            "remoteItem": { "feedGuid": "00000000-0000-5000-8000-000000000001" }
+          }
+        ]
+      }
+    ],
+    "medium": "podcast",
+    "images": [{ "href": "https://example.com/cover.png", "alt": "Cover", "width": 1400 }],
+    "blocks": [{ "value": true, "id": "google" }],
+    "txts": [{ "display": "placeholder-txt", "purpose": "verify" }],
+    "remoteItems": [{ "feedGuid": "00000000-0000-5000-8000-000000000002" }],
+    "podroll": { "remoteItems": [{ "feedGuid": "00000000-0000-5000-8000-000000000003" }] },
+    "updateFrequency": { "display": "Weekly", "rrule": "FREQ=WEEKLY" },
+    "podping": { "usesPodping": true },
+    "chat": { "server": "irc.example.com", "protocol": "irc", "space": "#placeholder" },
+    "publisher": { "remoteItem": { "feedGuid": "00000000-0000-5000-8000-000000000004" } }
+  }
+}
