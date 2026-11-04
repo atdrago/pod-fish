@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/*
+	The palette lives in plain custom properties, not in `@theme`, because the
+	whole set has to change inside a media query. The `@theme inline` block below
+	points each Tailwind token at one of these, so a utility resolves the value
+	of the active theme with no per-component branch.
+
+	Light is the base set and dark is the override, so a browser that reports no
+	preference gets light.
+*/
+:root {
+  --fish-page: #f6f8fa;
+  --fish-surface: #ffffff;
+  --fish-edge: #d6dde4;
+  --fish-text: #14212b;
+  --fish-dim: #55656f;
+  --fish-accent: #0f5e7a;
+  --fish-accent-ink: #ffffff;
+  --fish-live: #c0271f;
+  --fish-live-ink: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fish-page: #0e171d;
+    --fish-surface: #16232b;
+    --fish-edge: #2a3b45;
+    --fish-text: #e9eff3;
+    --fish-dim: #9fb1bc;
+    --fish-accent: #7fc8e3;
+    --fish-accent-ink: #0b2531;
+    --fish-live: #c0271f;
+    --fish-live-ink: #ffffff;
+  }
+}
+
+@theme inline {
+  --color-fish-page: var(--fish-page);
+  --color-fish-surface: var(--fish-surface);
+  --color-fish-edge: var(--fish-edge);
+  --color-fish-text: var(--fish-text);
+  --color-fish-dim: var(--fish-dim);
+  --color-fish-accent: var(--fish-accent);
+  --color-fish-accent-ink: var(--fish-accent-ink);
+  --color-fish-live: var(--fish-live);
+  --color-fish-live-ink: var(--fish-live-ink);
+}

@@ -1,0 +1,45 @@
+# The secret scan of KTD2. pre-commit scans the staged diff, and commit-msg scans the message.
+#
+# The custom rules below spell their private strings with a character class, so a rule
+# does not match its own source line.
+
+title = "pod-fish"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "A placeholder value by its shape, never by a path, so .env.test stays scanned."
+regexTarget = "match"
+regexes = ['''(?:=|//|^)placeholder-''']
+
+[[rules]]
+id = "private-home-path"
+description = "The home path of the Mac of the podcaster."
+regex = '''/Users/atdr[a]go\b'''
+
+[[rules]]
+id = "private-email"
+description = "The personal email address of the podcaster."
+regex = '''(?i)atdr[a]go(?:@|%40)gm[a]il\.com'''
+
+[[rules]]
+id = "private-content-folder"
+description = "The absolute path of the content folder. It belongs in .env only."
+regex = '''Documents/git/dr[a]go-fm'''
+
+[[rules]]
+id = "icecast-password-assignment"
+description = "An Icecast password written as a value. It belongs in Fly secrets only."
+regex = '''(?i)ICECAST_(?:SOURCE|ADMIN|RELAY)_PASSWORD[ \t]*[=:][ \t]*['"]?[^\s'"$<{.][^\s'"]{7,}'''
+
+[[rules]]
+id = "icecast-password-element"
+description = "An Icecast password written into an XML config. Only the rendered file holds it."
+regex = '''<(?:source|admin|relay)-password>[^<@$_]{8,}</'''
+
+[[rules]]
+id = "fly-toml-env-block"
+description = "A fly.toml [env] block. Pass values with fly deploy --env, or set them as Fly secrets."
+path = '''(?:^|/)fly\.toml$'''
+regex = '''(?m)^[ \t]*\[env\]'''

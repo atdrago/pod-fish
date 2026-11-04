@@ -1,0 +1,11 @@
+{
+  // VS Code formats with the built-in language formatter when no default is
+  // set. That formatter reads the tab size and the bracket spacing of each
+  // contributor, so one save rewrites every line of a file. Name Prettier here,
+  // so the editor and `npm run lint` agree. `.vscode/extensions.json`
+  // recommends the extension that this setting points to.
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

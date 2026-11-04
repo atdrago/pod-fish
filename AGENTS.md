@@ -36,4 +36,32 @@ This repository is public, or it will be. Treat every commit, branch, and pull r
 
 ## Verifying changes
 
-The quality gates and their commands land with the first scaffold of the app. Update this section when they do.
+Run these commands in this order before you call a change done:
+
+```sh
+npm run fix
+npm run lint
+npm run check
+npm run knip
+npm run lint:nul-bytes
+npm test
+```
+
+`README.md` lists which hook runs which job.
+
+### Git workflow
+
+- The full gate runs at a commit on `main` and at a merge into `main`.
+- Do the work on a branch. A branch commit runs only format, lint, and the secret scan on the staged files.
+- `git merge --no-ff <branch>` is the only way into `main`. A fast-forward merge creates no commit, so no hook can gate it.
+
+### Warning for `stage_fixed`
+
+The `format` job hides unstaged hunks while Prettier rewrites the staged ones. If the restore fails, the commit aborts and nothing is lost. Then lefthook suggests `git add -A`. Do not run that command, because it commits the work that you held back. Run `npm run format` on the file, and stage only what you meant to.
+
+### Logging
+
+- A log event tag is snake_case, for example `publish_upload_failed`.
+- A log line holds only these fields: `step`, `status`, `host`, `key`, `durationMs`, `error`.
+- A log line never holds `headers`, `url`, `request`, `body`, a token, or a signed URL.
+- A `catch` that does not rethrow logs an event with `errMessage`.

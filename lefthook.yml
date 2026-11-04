@@ -1,0 +1,96 @@
+# The full gate runs at commit on main and at a merge into main. Any other branch
+# gets format, lint, and the secret scan on the staged files. No pre-push gate.
+#
+# Jobs run sequentially wherever one writes files another reads. Prettier
+# rewrites staged files that ESLint then parses. `svelte-kit sync` regenerates
+# .svelte-kit/, and vitest regenerates it again -- the sveltekit() plugin in
+# vite.config.ts calls sync when it loads -- so the test job runs last.
+#
+# `npx --no` fails loudly when a binary is missing instead of fetching it from
+# the registry mid-hook, which would bypass the lockfile.
+#
+# gitleaks comes from Homebrew, not npm. Its jobs fail closed when it is missing.
+
+pre-commit:
+  piped: true
+  jobs:
+    # A new route has no generated ./$types until sync runs. Without this,
+    # type-aware ESLint fails it with a bogus "error typed value" that gives
+    # no hint the fix is a sync.
+    - name: sync
+      run: npx --no -- svelte-kit sync
+    # stage_fixed hides unstaged hunks while Prettier rewrites the staged ones.
+    # If a rewrite lands near a hidden hunk the restore fails and the commit
+    # aborts -- nothing is lost, but lefthook then suggests `git add -A`, which
+    # would commit the WIP you deliberately held back. Instead run
+    # `npm run format` on the file, then re-stage only what you meant to.
+    - name: format
+      run: npx --no -- prettier --write --ignore-unknown {staged_files}
+      glob: '*.{js,mjs,ts,svelte,json,css,md,html,yml,yaml}'
+      stage_fixed: true
+    - name: lint
+      run: npx --no -- eslint --max-warnings 0 {staged_files}
+      glob: '*.{js,mjs,ts,svelte}'
+    - name: secrets
+      run: >-
+        command -v gitleaks > /dev/null || { echo 'gitleaks is missing. Run: brew install gitleaks'; exit 1; };
+        gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml
+    - name: check
+      only:
+        - ref: main
+      run: npm run check:types
+    - name: knip
+      only:
+        - ref: main
+      run: npm run knip
+    - name: nul-bytes
+      only:
+        - ref: main
+      run: npm run lint:nul-bytes
+    # vitest rewrites .svelte-kit/, so it runs after the readers above.
+    - name: test
+      only:
+        - ref: main
+      run: npm test
+
+# A merge runs no pre-commit hook. This hook gates a merge into main. The setup in
+# README.md sets `branch.main.mergeoptions` to `--no-ff`, so every merge creates a commit.
+pre-merge-commit:
+  piped: true
+  jobs:
+    - name: sync
+      run: npx --no -- svelte-kit sync
+    - name: secrets
+      run: >-
+        command -v gitleaks > /dev/null || { echo 'gitleaks is missing. Run: brew install gitleaks'; exit 1; };
+        gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml
+    - name: lint
+      only:
+        - ref: main
+      run: npm run lint
+    - name: check
+      only:
+        - ref: main
+      run: npm run check:types
+    - name: knip
+      only:
+        - ref: main
+      run: npm run knip
+    - name: nul-bytes
+      only:
+        - ref: main
+      run: npm run lint:nul-bytes
+    - name: test
+      only:
+        - ref: main
+      run: npm test
+
+commit-msg:
+  jobs:
+    # {1} is the commit message file git passes to the hook.
+    - name: commitlint
+      run: npx --no -- commitlint --edit {1}
+    - name: secrets
+      run: >-
+        command -v gitleaks > /dev/null || { echo 'gitleaks is missing. Run: brew install gitleaks'; exit 1; };
+        gitleaks stdin --redact --no-banner --config .gitleaks.toml < {1}
