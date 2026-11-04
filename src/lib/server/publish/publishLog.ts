@@ -2,7 +2,7 @@ import type { PublishRecord } from '$lib/server/content/schemas';
 import type { ContentStore, ContentSnapshot, WriteResult } from '$lib/server/content/store';
 
 /* A record name must be a safe slug, and it sorts by time. */
-const recordNameFor = (startedAt: Date): string =>
+export const recordNameFor = (startedAt: Date): string =>
   startedAt.toISOString().toLowerCase().replaceAll(':', '-').replaceAll('.', '-');
 
 export const snapshotLiveItems = (
@@ -21,8 +21,7 @@ export const snapshotLiveItems = (
 	the public feed holds from this record, so an attempt that stopped early still
 	leaves its record.
 */
-export const createPublishLog = (store: ContentStore, startedAt: Date, initial: PublishRecord) => {
-  const name = recordNameFor(startedAt);
+export const createPublishLog = (store: ContentStore, name: string, initial: PublishRecord) => {
   let current = initial;
 
   return {

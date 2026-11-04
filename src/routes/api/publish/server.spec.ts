@@ -6,7 +6,7 @@ const { publishFake } = vi.hoisted(() => ({ publishFake: vi.fn() }));
 
 vi.mock('$lib/server/publish/publish', () => ({ publish: publishFake }));
 vi.mock('$lib/server/runtime', () => ({
-  publishDeps: {},
+  liveDeps: {},
   publishLock: createPublishLock()
 }));
 

@@ -14,7 +14,9 @@ export const publishOutcomeSchema = v.variant('ok', [
     ok: v.literal(false),
     failedStep: v.picklist([
       'lock',
+      'refused',
       'validate',
+      'mount',
       'upload',
       'feed',
       'record',

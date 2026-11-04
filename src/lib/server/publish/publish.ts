@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import type { PublishOutcome } from '$lib/publishOutcome';
 import { EPISODES_FOLDER, MEDIA_FOLDER } from '$lib/server/content/paths';
 import type { PublishRecord } from '$lib/server/content/schemas';
-import type { ContentSnapshot, ContentStore } from '$lib/server/content/store';
+import type { ContentSnapshot, ContentStore, PublishEntry } from '$lib/server/content/store';
 import { contentTypeFor } from '$lib/server/feed/contentTypes';
 import { generateFeed } from '$lib/server/feed/generate';
 import {
@@ -20,7 +20,7 @@ import { validateContent } from '$lib/server/feed/validate';
 import { errMessage, log } from '$lib/server/log';
 import type { Notifier } from '$lib/server/podping/notifier';
 import { feedObjectKey, mediaObjectKey } from './objectKeys';
-import { createPublishLog, snapshotLiveItems } from './publishLog';
+import { createPublishLog, recordNameFor, snapshotLiveItems } from './publishLog';
 import type { ObjectStore } from './r2Client';
 import { verifyPublicFeed } from './verifyPublic';
 
@@ -211,6 +211,26 @@ const logRejectedSidecarPaths = (failures: readonly { node: string; field: strin
   }
 };
 
+/* The hashes alone, for a generated feed that the Live tab compares with a publish record. */
+export const readSidecarHashes = async (
+  snapshot: ContentSnapshot,
+  contentFolder: string
+): Promise<Map<string, string> | undefined> => {
+  const hashes = new Map<string, string>();
+
+  for (const { itemFolder, file, source } of listSidecarReferences(snapshot)) {
+    const read = await readItemFile(contentFolder, itemFolder, file, source);
+
+    if (isFailure(read)) {
+      return undefined;
+    }
+
+    hashes.set(source, read.sha256);
+  }
+
+  return hashes;
+};
+
 const describeResponse = (result: { status?: number; error?: string }): string =>
   result.status === undefined
     ? 'The app could not reach the bucket.'
@@ -245,7 +265,7 @@ const runPipeline = async (
   const feed = generateFeed(snapshot, config, startedAt, collected.sidecarHashes);
   const feedKey = feedObjectKey(config.feedUrl, config.objectKeyPrefix);
   const files: PublishRecord['files'] = [];
-  const runLog = createPublishLog(store, startedAt, {
+  const runLog = createPublishLog(store, recordNameFor(startedAt), {
     startedAt: startedAt.toISOString(),
     builtAt: startedAt.toISOString(),
     reason,
@@ -350,24 +370,23 @@ const runPipeline = async (
     };
   }
 
-  const verified = await verifyPublicFeed(deps, {
-    feedUrl: config.feedUrl,
-    expectedSha256: feed.sha256,
-    userAgent: deps.userAgent
-  });
+  return verifyThenPing(deps, runLog, { feedSha256: feed.sha256, reason, files });
+};
 
-  if (!verified.ok) {
-    await runLog.write({ failedStep: 'verify', failedReason: verified.reason });
+type RunLog = ReturnType<typeof createPublishLog>;
 
-    return {
-      ok: false,
-      failedStep: 'verify',
-      reason: verified.reason,
-      recordName: runLog.name
-    };
-  }
+type Finish = {
+  feedSha256: string;
+  reason: PublishRecord['reason'];
+  files: PublishRecord['files'];
+};
 
-  const notified = await deps.notifier.notify({ feedUrl: config.feedUrl, reason });
+const pingAndFinish = async (
+  deps: PublishDeps,
+  runLog: RunLog,
+  { feedSha256, reason, files }: Finish
+): Promise<PublishOutcome> => {
+  const notified = await deps.notifier.notify({ feedUrl: deps.config.feedUrl, reason });
 
   if (!notified.ok) {
     await runLog.write({ verified: true, failedStep: 'ping', failedReason: notified.reason });
@@ -384,6 +403,8 @@ const runPipeline = async (
     verified: true,
     pinged: true,
     pingResult: notified.label,
+    failedStep: undefined,
+    failedReason: undefined,
     finishedAt: deps.clock().toISOString()
   });
 
@@ -392,20 +413,64 @@ const runPipeline = async (
     recordName: runLog.name,
     uploaded: files.filter((file) => file.uploaded).map((file) => file.key),
     skipped: files.filter((file) => !file.uploaded).length,
-    feedSha256: feed.sha256,
+    feedSha256,
     pingLabel: notified.label
   };
 };
 
-export const publish = async (
+const verifyThenPing = async (
   deps: PublishDeps,
-  { reason }: { reason: PublishRecord['reason'] }
+  runLog: RunLog,
+  finish: Finish
 ): Promise<PublishOutcome> => {
+  const verified = await verifyPublicFeed(deps, {
+    feedUrl: deps.config.feedUrl,
+    expectedSha256: finish.feedSha256,
+    userAgent: deps.userAgent
+  });
+
+  if (!verified.ok) {
+    await runLog.write({ failedStep: 'verify', failedReason: verified.reason });
+
+    return {
+      ok: false,
+      failedStep: 'verify',
+      reason: verified.reason,
+      recordName: runLog.name
+    };
+  }
+
+  return pingAndFinish(deps, runLog, finish);
+};
+
+const runGuarded = async (run: () => Promise<PublishOutcome>): Promise<PublishOutcome> => {
   try {
-    return await runPipeline(deps, reason);
+    return await run();
   } catch (error) {
     log.error('publish_unexpected_failure', { step: 'publish', error: errMessage(error) });
 
     return { ok: false, failedStep: 'unexpected', reason: 'The publish stopped on an app error.' };
   }
 };
+
+const finishOf = ({ record }: PublishEntry): Finish => ({
+  feedSha256: record.feedSha256,
+  reason: record.reason,
+  files: record.files
+});
+
+/* R28. Retry resumes the record of the failed run, so its times and its reason stay. */
+export const resumeFromVerify = (deps: PublishDeps, entry: PublishEntry): Promise<PublishOutcome> =>
+  runGuarded(() =>
+    verifyThenPing(deps, createPublishLog(deps.store, entry.name, entry.record), finishOf(entry))
+  );
+
+export const resumeFromPing = (deps: PublishDeps, entry: PublishEntry): Promise<PublishOutcome> =>
+  runGuarded(() =>
+    pingAndFinish(deps, createPublishLog(deps.store, entry.name, entry.record), finishOf(entry))
+  );
+
+export const publish = (
+  deps: PublishDeps,
+  { reason }: { reason: PublishRecord['reason'] }
+): Promise<PublishOutcome> => runGuarded(() => runPipeline(deps, reason));
