@@ -1,5 +1,7 @@
+import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import type { LiveView } from '$lib/liveView';
 import type { PublishOutcome } from '$lib/publishOutcome';
 import LivePanel from './LivePanel.svelte';
 import { ENDED_ITEM, LIVE_ITEM, makeActions, makeView, PENDING_ITEM } from './liveSpecQueries';
@@ -152,6 +154,40 @@ describe('a request in flight (AE8)', () => {
     release({ ok: false, failedStep: 'lock', reason: 'publish in flight' });
 
     await expect.element(stopButton(screen)).toBeEnabled();
+  });
+
+  it('keeps the newer view when an older refresh resolves late', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+
+    try {
+      let releaseSlowRefresh: (view: LiveView) => void = () => undefined;
+      const liveView = makeView({ subject: LIVE_ITEM });
+      const actions = makeActions(makeView());
+
+      vi.mocked(actions.refresh)
+        .mockReturnValueOnce(new Promise((resolve) => (releaseSlowRefresh = resolve)))
+        .mockResolvedValue(makeView());
+
+      const screen = await render(LivePanel, { view: liveView, actions });
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      await stopButton(screen).click();
+
+      await vi.waitFor(() => {
+        expect(actions.refresh).toHaveBeenCalledTimes(2);
+      });
+      await expect.element(goLiveButton(screen)).toBeEnabled();
+
+      releaseSlowRefresh(liveView);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
+
+      /* A polled assertion advances the fake interval, and the next refresh hides the fault. */
+      expect(stopButton(screen).element()).toBeDisabled();
+      expect(goLiveButton(screen).element()).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('disables both buttons when another tab holds the lock', async () => {

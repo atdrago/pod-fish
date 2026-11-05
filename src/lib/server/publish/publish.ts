@@ -118,7 +118,7 @@ const readItemFile = async (
 
 const isFailure = (value: object): value is FailedOutcome => 'ok' in value;
 
-const collectUploads = async (
+export const collectUploads = async (
   snapshot: ContentSnapshot,
   { contentFolder, config }: Pick<PublishDeps, 'contentFolder' | 'config'>
 ): Promise<{ files: UploadFile[]; sidecarHashes: Map<string, string> } | FailedOutcome> => {

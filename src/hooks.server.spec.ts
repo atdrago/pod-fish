@@ -109,6 +109,13 @@ describe('the request guard (AE15)', () => {
     expect(response.status).toBe(200);
   });
 
+  it('forbids a frame on a response, so no other site can frame the Live tab', async () => {
+    const { response } = await run({ method: 'GET', path: '/live' });
+
+    expect(response.headers.get('content-security-policy')).toBe("frame-ancestors 'none'");
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+  });
+
   it('refuses a non-media POST with a 2 MB body before the handler runs', async () => {
     const { response, resolve } = await run({
       origin: ORIGIN,

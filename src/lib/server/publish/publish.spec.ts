@@ -316,6 +316,24 @@ describe('a failed upload (AE2)', () => {
   });
 });
 
+describe('an unexpected failure', () => {
+  it('returns the unexpected step, logs the event, and sends no ping when the store throws', async () => {
+    const deps = createDeps({
+      objectStore: {
+        head: vi.fn(() => Promise.resolve({ ok: true as const, sha256: undefined })),
+        put: vi.fn(() => Promise.reject(new Error('store exploded')))
+      }
+    });
+    const result = await publish(deps, { reason: 'update' });
+
+    expect(result).toMatchObject({ ok: false, failedStep: 'unexpected' });
+    expect(deps.notifier.notify).not.toHaveBeenCalled();
+    expect(logLines(errorSpy)).toContainEqual(
+      expect.objectContaining({ event: 'publish_unexpected_failure', error: 'store exploded' })
+    );
+  });
+});
+
 describe('verify (AE1)', () => {
   it('passes on the third try and pings once', async () => {
     let attempt = 0;

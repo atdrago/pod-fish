@@ -33,4 +33,4 @@ export const mediaObjectKey = (
 };
 
 export const publicObjectUrl = (mediaBaseUrl: string, key: string): string =>
-  `${mediaBaseUrl.replace(/\/+$/, '')}/${key}`;
+  `${mediaBaseUrl.replace(/\/+$/, '')}/${key.split('/').map(encodeURIComponent).join('/')}`;

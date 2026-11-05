@@ -62,5 +62,17 @@ export const handle: Handle = async ({ event, resolve }) => {
     return refuse(403, 'request_origin_refused', host);
   }
 
-  return bodyRefusal(request, event.url.pathname) ?? resolve(event);
+  const refusal = bodyRefusal(request, event.url.pathname);
+
+  if (refusal !== undefined) {
+    return refusal;
+  }
+
+  const response = await resolve(event);
+
+  /* A framed Live tab would let another site trick the owner into a press of Stop. */
+  response.headers.set('content-security-policy', "frame-ancestors 'none'");
+  response.headers.set('x-frame-options', 'DENY');
+
+  return response;
 };

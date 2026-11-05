@@ -27,7 +27,7 @@ const MINIMUM_PUT_TIMEOUT_MS = 30_000;
 const MINIMUM_UPLOAD_BYTES_PER_MS = 100;
 
 const putTimeoutMs = (length: number): number =>
-  Math.max(MINIMUM_PUT_TIMEOUT_MS, length / MINIMUM_UPLOAD_BYTES_PER_MS);
+  Math.max(MINIMUM_PUT_TIMEOUT_MS, Math.ceil(length / MINIMUM_UPLOAD_BYTES_PER_MS));
 
 /* KTD6. A single PUT per object: every podcast file fits R2's 5 GiB limit for one PUT. */
 export const createR2Client = ({

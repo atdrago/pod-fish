@@ -158,6 +158,29 @@ describe('the full fixture', () => {
     expect(item).toContain('<itunes:duration>30</itunes:duration>');
     expect(item).toContain('<guid isPermaLink="false">placeholder-pilot-guid</guid>');
   });
+
+  it('percent-encodes a media file name that holds a space and a hash sign', async () => {
+    await cp(join(FIXTURES, 'full'), folder, { recursive: true });
+
+    const path = join(folder, 'episodes/pilot/episode.json');
+    const record = JSON.parse(await readFile(path, 'utf8'));
+
+    await writeFile(
+      path,
+      JSON.stringify({ ...record, media: { ...record.media, file: 'my pilot #1.mp3' } })
+    );
+
+    const snapshot = await createContentStore(folder).readSnapshot();
+    const sidecarHashes = new Map(
+      listSidecarReferences(snapshot).map(({ source }) => [source, SIDECAR_HASH])
+    );
+    const { xml } = generateFeed(snapshot, CONFIG, BUILT_AT, sidecarHashes);
+
+    expect(xml).toContain(
+      'https://example.com/placeholder-show/media/pilot/0000000000000000-my%20pilot%20%231.mp3'
+    );
+    expect(() => SyntaxValidator.validate(xml)).not.toThrow();
+  });
 });
 
 describe('the Friday-minimum fixture', () => {

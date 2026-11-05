@@ -114,10 +114,33 @@ const choicesFor = (
   return { choices: ['publish'], preselected: 'publish' };
 };
 
+const findUnpublishedFlip = (
+  snapshot: ContentSnapshot,
+  publishEntry: PublishEntry | undefined
+): LiveEntry | undefined =>
+  snapshot.liveItems.find(({ slug, record }) => {
+    if (record.draft || record.status === 'pending') {
+      return false;
+    }
+
+    const published = publishEntry?.record.liveItems.find((item) => item.slug === slug);
+
+    return published?.status !== record.status;
+  });
+
+const publishPlanFor = ({ slug, record }: LiveEntry): RetryPlan => ({
+  failedStep: 'publish',
+  reason: `${slug} changed to ${record.status}, and that change is not public yet.`,
+  ...choicesFor('feed'),
+  pingReason: record.status === 'live' ? 'live' : 'liveEnd',
+  entry: undefined
+});
+
 /*
 	R28. Only the choices that fit the failed step, so no path offers a ping before
 	verify has passed. A flip that reached no record is the case of a crash between the
-	write and the publish.
+	write and the publish, or of a publish that failed before its record. That flip comes
+	before a failed run, because the steps of that run can only finish the older feed.
 */
 const planRetry = (
   snapshot: ContentSnapshot,
@@ -127,6 +150,12 @@ const planRetry = (
   const latest = records.at(-1);
 
   if (latest?.record.failedStep !== undefined) {
+    const flipAfterFailedRun = findUnpublishedFlip(snapshot, latest);
+
+    if (flipAfterFailedRun !== undefined) {
+      return publishPlanFor(flipAfterFailedRun);
+    }
+
     return {
       failedStep: latest.record.failedStep,
       reason: latest.record.failedReason ?? 'The last publish did not finish.',
@@ -146,28 +175,11 @@ const planRetry = (
     };
   }
 
-  const snapshotRecord = publishedRecord(publicFeed, records);
-  const unpublishedFlip = snapshot.liveItems.find(({ slug, record }) => {
-    if (record.draft || record.status === 'pending') {
-      return false;
-    }
+  const unpublishedFlip = findUnpublishedFlip(snapshot, publishedRecord(publicFeed, records));
 
-    const published = snapshotRecord?.record.liveItems.find((item) => item.slug === slug);
-
-    return published?.status !== record.status;
-  });
-
-  if (publicFeed.state !== 'offline' && unpublishedFlip !== undefined) {
-    return {
-      failedStep: 'publish',
-      reason: `${unpublishedFlip.slug} changed to ${unpublishedFlip.record.status}, and that change is not public yet.`,
-      ...choicesFor('feed'),
-      pingReason: unpublishedFlip.record.status === 'live' ? 'live' : 'liveEnd',
-      entry: undefined
-    };
-  }
-
-  return null;
+  return publicFeed.state !== 'offline' && unpublishedFlip !== undefined
+    ? publishPlanFor(unpublishedFlip)
+    : null;
 };
 
 export const loadRetryPlan = async (deps: LiveDeps): Promise<RetryPlan | null> => {

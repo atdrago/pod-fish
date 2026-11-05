@@ -36,12 +36,23 @@
       : retry?.preselected
   );
 
+  let refreshSequence = 0;
+
   const refresh = async (): Promise<void> => {
+    refreshSequence += 1;
+    const ticket = refreshSequence;
+
     try {
-      refreshedView = await actions.refresh();
-      isRefreshFailing = false;
+      const nextView = await actions.refresh();
+
+      if (ticket === refreshSequence) {
+        refreshedView = nextView;
+        isRefreshFailing = false;
+      }
     } catch {
-      isRefreshFailing = true;
+      if (ticket === refreshSequence) {
+        isRefreshFailing = true;
+      }
     }
   };
 

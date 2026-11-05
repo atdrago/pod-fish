@@ -1,7 +1,11 @@
 import type { LiveChangeResult } from '$lib/liveView';
-import type { LiveDeps } from './state';
+import { loadRetryPlan, type LiveDeps } from './state';
 
-/* R32. An ended item stays listed until the podcaster deletes it. Only an ended item can go. */
+/*
+	R32. An ended item stays listed until the podcaster deletes it. Only an ended item can go.
+	A Retry plan blocks the delete, because this item can be the only sign of a public feed
+	that is still live.
+*/
 export const deleteEnded = async (deps: LiveDeps, slug: string): Promise<LiveChangeResult> => {
   const snapshot = await deps.store.readSnapshot();
   const item = snapshot.liveItems.find((entry) => entry.slug === slug);
@@ -12,6 +16,10 @@ export const deleteEnded = async (deps: LiveDeps, slug: string): Promise<LiveCha
 
   if (item.record.status !== 'ended') {
     return { ok: false, reason: `The live item ${slug} has not ended, so it stays.` };
+  }
+
+  if ((await loadRetryPlan(deps)) !== null) {
+    return { ok: false, reason: `A publish did not finish, so ${slug} stays. Finish Retry first.` };
   }
 
   const removed = await deps.store.deleteLiveItem(slug);

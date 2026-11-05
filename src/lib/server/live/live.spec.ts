@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -262,6 +262,54 @@ describe('Go live refusals', () => {
     }
   );
 
+  it('refuses an item whose stream URL differs from the configured mount, and names both (R19)', async () => {
+    const itemUrl = 'https://example.com/placeholder-show/other.mp3';
+
+    await editLive((record) => ({ ...record, enclosure: { ...record.enclosure, url: itemUrl } }));
+
+    const before = await readLive();
+    const result = await goLive(createDeps());
+
+    expect(result).toMatchObject({ ok: false, failedStep: 'refused' });
+    expect(result).toMatchObject({ reason: expect.stringContaining(itemUrl) });
+    expect(result).toMatchObject({ reason: expect.stringContaining(MOUNT_URL) });
+    expect(result).toMatchObject({ reason: expect.stringContaining('STREAM_MOUNT_URL') });
+    expect(result).toMatchObject({ reason: expect.stringContaining('live/first-show/live.json') });
+    expect(await readLive()).toStrictEqual(before);
+    expect(events).toStrictEqual([]);
+    expect(objects.size).toBe(0);
+    expect(await readRecords()).toStrictEqual([]);
+  });
+
+  it.each([
+    ['a missing media file', () => Promise.resolve()],
+    [
+      'a media file that does not match its record',
+      async () => {
+        await mkdir(join(folder, 'episodes/pilot/media'), { recursive: true });
+        await writeFile(join(folder, 'episodes/pilot/media/pilot.mp3'), 'placeholder wrong bytes');
+      }
+    ]
+  ])('stops before the mount check and the flip on %s (KTD9)', async (_name, arrange) => {
+    await cp(join(FIXTURES, 'basic/episodes/pilot'), join(folder, 'episodes/pilot'), {
+      recursive: true
+    });
+    await arrange();
+
+    const before = await readLive();
+    const result = await goLive(createDeps());
+
+    expect(result).toMatchObject({
+      ok: false,
+      failedStep: 'validate',
+      failedFile: 'episodes/pilot/media/pilot.mp3'
+    });
+    expect(await readLive()).toStrictEqual(before);
+    expect(events).toStrictEqual([]);
+    expect(objects.size).toBe(0);
+    expect(await readRecords()).toStrictEqual([]);
+  });
+
   it('refuses an item that is already live', async () => {
     await goLive(createDeps());
     events.length = 0;
@@ -442,6 +490,35 @@ describe('the Retry contract (AE14, R28)', () => {
   });
 });
 
+describe('a flip after a failed run (R28)', () => {
+  it('offers publish when no record is newer than the failed run, and refuses the old ping', async () => {
+    fakes.notify = () => Promise.resolve({ ok: false, reason: 'The hub answered 500.' });
+    await goLive(createDeps());
+    await editLive((record) => ({ ...record, status: 'ended', revision: 3 }));
+
+    expect((await loadLiveView(createDeps())).retry).toMatchObject({
+      failedStep: 'publish',
+      choices: ['publish'],
+      preselected: 'publish',
+      reason: expect.stringContaining('first-show')
+    });
+
+    fakes.notify = undefined;
+    now = new Date('2026-11-06T21:30:00.000Z');
+    events.length = 0;
+
+    expect(await retryLiveAction(createDeps(), 'ping')).toMatchObject({
+      ok: false,
+      failedStep: 'refused'
+    });
+    expect(events).toStrictEqual([]);
+
+    expect(await retryLiveAction(createDeps(), 'publish')).toMatchObject({ ok: true });
+    expect(events).toContain('ping:liveEnd');
+    expect((await loadLiveView(createDeps())).retry).toBeNull();
+  });
+});
+
 describe('an ended item (AE16, R32)', () => {
   const endFirstShow = async (): Promise<void> => {
     await goLive(createDeps());
@@ -492,6 +569,28 @@ describe('an ended item (AE16, R32)', () => {
     expect(await deleteEnded(createDeps(), 'first-show')).toMatchObject({ ok: true });
     expect(await readdir(join(folder, 'live'))).toStrictEqual([]);
     expect((await loadLiveView(createDeps())).ended).toStrictEqual([]);
+  });
+
+  it('deletes a plain ended item when no Retry plan exists', async () => {
+    await endFirstShow();
+
+    expect((await loadLiveView(createDeps())).retry).toBeNull();
+    expect(await deleteEnded(createDeps(), 'first-show')).toStrictEqual({ ok: true });
+    expect(await readdir(join(folder, 'live'))).toStrictEqual([]);
+  });
+
+  it('refuses to delete an ended item when a Stop failed at validate and left a Retry plan', async () => {
+    await goLive(createDeps());
+    await editLive(({ contentLink, ...record }) => record);
+    now = new Date('2026-11-06T21:30:00.000Z');
+
+    expect(await stopLive(createDeps())).toMatchObject({ ok: false, failedStep: 'validate' });
+    expect(await readRecords()).toHaveLength(1);
+
+    const result = await deleteEnded(createDeps(), 'first-show');
+
+    expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('Retry') });
+    expect((await readLive()).status).toBe('ended');
   });
 
   it('refuses to delete an item that has not ended', async () => {

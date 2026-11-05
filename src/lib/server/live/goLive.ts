@@ -1,6 +1,6 @@
 import type { PublishOutcome } from '$lib/publishOutcome';
 import { validateContent } from '$lib/server/feed/validate';
-import { publish } from '$lib/server/publish/publish';
+import { collectUploads, publish } from '$lib/server/publish/publish';
 import { checkMount } from '$lib/server/stream/mountCheck';
 import { draftSlugsOf, pickSubject, type LiveDeps } from './state';
 
@@ -9,9 +9,10 @@ const MS_PER_MINUTE = 60_000;
 const refuse = (reason: string): PublishOutcome => ({ ok: false, failedStep: 'refused', reason });
 
 /*
-	KTD9. The order matters: validate and check the mount before the flip, so a dead mount
-	leaves the item unchanged (AE13). After the flip, a failure keeps the times, and Retry
-	repeats the failed step without a new start (R28).
+	KTD9. The order matters: validate, match the stream URL (R19), read the files, and check
+	the mount before the flip, so a fault in any of them leaves the item unchanged (AE13).
+	After the flip, a failure keeps the times, and Retry repeats the failed step without a
+	new start (R28).
 */
 export const goLive = async (deps: LiveDeps): Promise<PublishOutcome> => {
   const snapshot = await deps.store.readSnapshot();
@@ -40,6 +41,20 @@ export const goLive = async (deps: LiveDeps): Promise<PublishOutcome> => {
       reason: `The feed has ${String(failures.length)} problem(s) to fix before Go live.`,
       failures
     };
+  }
+
+  const itemUrl = subject.record.enclosure.url;
+
+  if (itemUrl !== deps.mountUrl) {
+    return refuse(
+      `The live item ${subject.slug} streams from ${itemUrl}, but STREAM_MOUNT_URL is ${deps.mountUrl}. Change STREAM_MOUNT_URL or the enclosure in live/${subject.slug}/live.json so that they match.`
+    );
+  }
+
+  const collected = await collectUploads(snapshot, deps);
+
+  if ('ok' in collected) {
+    return collected;
   }
 
   const mount = await checkMount(deps, deps.mountUrl);

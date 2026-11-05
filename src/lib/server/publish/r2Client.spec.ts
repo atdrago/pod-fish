@@ -50,6 +50,13 @@ describe('the R2 client', () => {
     expect(headers.get('authorization')).not.toContain(CONFIG.secretAccessKey);
   });
 
+  it('sends a PUT for a length that gives a fractional timeout', async () => {
+    const { fetchFake, client } = clientFor(() => new Response(null, { status: 200 }));
+
+    expect(await client.put({ ...PUT_INPUT, length: 58_000_037 })).toStrictEqual({ ok: true });
+    expect(fetchFake).toHaveBeenCalledTimes(1);
+  });
+
   it('reports a refused PUT as a value with the status', async () => {
     const { client } = clientFor(() => new Response('denied', { status: 403 }));
 
