@@ -34,6 +34,10 @@ This repository is public, or it will be. Treat every commit, branch, and pull r
 - Before each commit, read the diff for a secret or a personal value. The secret scan in the gate is the backstop, not the rule.
 - When a secret lands in a commit, treat it as leaked. Rotate it first. Then remove it from history, and rewrite a pushed branch only with the owner's approval.
 
+## Docs
+
+- `docs/live-show-runbook.md`: the checklist for the show, the rehearsal, the fallbacks, and the stream server.
+
 ## Verifying changes
 
 Run these commands in this order before you call a change done:

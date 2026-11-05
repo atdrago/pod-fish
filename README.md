@@ -34,6 +34,10 @@ npm start        # the production build at http://127.0.0.1:5174, reads .env
 
 The app listens on `127.0.0.1` only. A request with another `Host` is refused, and so is a write request from another `Origin` (`src/hooks.server.ts`).
 
+## The show
+
+[`docs/live-show-runbook.md`](docs/live-show-runbook.md) is the checklist for the show, the rehearsal, the fallbacks, and the stream server.
+
 ## Quality gates
 
 ```sh
