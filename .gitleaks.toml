@@ -1,7 +1,6 @@
 # The secret scan of KTD2. pre-commit scans the staged diff, and commit-msg scans the message.
 #
-# The custom rules below spell their private strings with a character class, so a rule
-# does not match its own source line.
+# The custom rules below describe the shape of a value. This file holds no private value.
 
 title = "pod-fish"
 
@@ -14,19 +13,34 @@ regexTarget = "match"
 regexes = ['''(?:=|//|^)placeholder-''']
 
 [[rules]]
-id = "private-home-path"
-description = "The home path of the Mac of the podcaster."
-regex = '''/Users/atdr[a]go\b'''
+id = "home-path"
+description = "An absolute path in the home folder of a person."
+regex = '''(?m)(?:^|[^A-Za-z0-9._-])(?:/Users/|/home/|[A-Za-z]:\\+Users\\+)[A-Za-z0-9._-]+'''
+
+[[rules.allowlists]]
+description = "A placeholder user name."
+regexTarget = "match"
+regexes = ['''(?:/|\\)(?:example|placeholder-[A-Za-z0-9._-]*)$''']
 
 [[rules]]
-id = "private-email"
-description = "The personal email address of the podcaster."
-regex = '''(?i)atdr[a]go(?:@|%40)gm[a]il\.com'''
+id = "email-address"
+description = "An email address. Only a domain reserved for examples can appear in this repo."
+regex = '''(?i)[a-z0-9._%+-]+(?:@|%40)[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}'''
+
+[[rules.allowlists]]
+description = "The domains that RFC 2606 reserves for documents and tests."
+regexTarget = "match"
+regexes = ['''(?i)(?:@|%40|\.)example\.(?:com|net|org)$''', '''(?i)\.(?:example|invalid|localhost|test)$''']
+
+[[rules.allowlists]]
+description = "The public contact address of the podping project, which the plan cites."
+regexTarget = "match"
+regexes = ['''^podping@podcastindex\.org$''']
 
 [[rules]]
-id = "private-content-folder"
-description = "The absolute path of the content folder. It belongs in .env only."
-regex = '''Documents/git/dr[a]go-fm'''
+id = "content-folder-assignment"
+description = "The absolute path of the content folder written as a value. It belongs in .env only."
+regex = '''CONTENT_FOLDER[ \t]*[=:][ \t]*['"]?(?:/|~|[A-Za-z]:\\)[^\s'"]+'''
 
 [[rules]]
 id = "icecast-password-assignment"
