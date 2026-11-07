@@ -22,6 +22,10 @@ After a solved, verified problem, offer once to invoke the `ce-compound` skill a
 
 Write every report, summary, or handoff to the user through the `ce-noslop` skill. This applies when you are the top-level agent writing to the user, not when you are a subagent reporting to its caller. Do not apply it to code, config, verbatim quotes, or text the user asked to post as written.
 
+### Publishing
+
+Before every publish step, you must send one confirmation prompt to the human user. Use the blocking question tool of the host. Ask "Please confirm you are ready to publish" with two options: "Publish" and "Cancel". Send the prompt immediately before the step, once per step, even when the request that you act on asks for the publish. On "Cancel", do not publish, and report that you stopped. A publish step is any action that changes what the public can see: an upload of the feed or of media to the bucket, a hub or podping notification, or a request to the publish, go-live, or stop endpoints of this app.
+
 ## Open source and secrets
 
 This repository is public, or it will be. Treat every commit, branch, and pull request as public from the first commit.
