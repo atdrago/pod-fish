@@ -206,6 +206,73 @@ Do these checks every 5 minutes:
 
 An ended item stays in the feed until you delete it. [Prepare the next show](#prepare-the-next-show) removes it.
 
+## Post-production
+
+Make the episode from the Audacity master, not from the BUTT recording. The BUTT recording holds the live gate, and a gate cannot be undone. The values below come from the show of 2026-11-06. That master had its peaks near 0 dBFS, an average level of -26 LUFS, and a room floor 40 dB under the voice. Check the next master against those three numbers before you apply the values.
+
+Do the steps in this order. Every effect is in the Effect menu of Audacity 4.
+
+1. Export the master as WAV outside the content folder before any edit.
+2. Trim the head and the tail. Cut mistakes, notification sounds, sips, and swallows: select the region on the voice track and press Shift+Delete, so the gap closes. Do every cut before the bed goes in.
+3. Noise reduction, under "Noise removal and repair". Select two to three seconds of room noise with no breath, press "Get noise profile", double-click an empty part of the voice track to select all of it, then open the effect again and apply the values below.
+4. Compressor, under "Volume and compression", on the whole voice track.
+5. Noise gate, under "Noise removal and repair", on the whole voice track. Do not take the threshold from "Analyze Noise Level". Its suggestion sits one decibel above the floor, and that cuts quiet words.
+6. Click removal, under "Noise removal and repair". Test on 30 seconds of the worst passage first. Stop when a "t" or a "k" sounds soft.
+7. Import the bed with Cmd+Shift+I. It lands on a new track. Place the clip, then set the track volume so the bed sits 18 to 24 dB under the voice.
+8. Loudness Normalization, then Limiter, under "Volume and compression", on the voice track only. On both tracks, the normalization lifts the bed to the level of the voice.
+9. Export with Cmd+Shift+E: full project audio, WAV, to a folder outside the content folder.
+10. Run the de-esser and the MP3 encode in one ffmpeg command. Audacity 4.0.2 has no de-esser. The ffmpeg `deesser` filter ducks the loud "s" peaks only: on the master of 2026-11-06, intensity 0.5 cut the ess peaks by 7 dB and the average of the 4.5 to 10 kHz band by 1 dB. To hear what the filter removes, replace `s=o` with `s=e` and play the result.
+
+```sh
+ffmpeg -i <export>.wav -af deesser=i=0.5:m=0.5:f=0.5:s=o -ar 44100 -ac 1 \
+  -c:a libmp3lame -b:a 128k episodes/<slug>/media/<slug>.mp3
+```
+
+11. Write the sha256, the byte length, and the duration into `episodes/<slug>/episode.json`, raise its revision, and do the publish command. Ask for the publish confirmation first.
+
+| Effect                 | Control                        | Value                    |
+| ---------------------- | ------------------------------ | ------------------------ |
+| Noise reduction        | Noise reduction                | 12 dB                    |
+|                        | Sensitivity                    | 6                        |
+|                        | Frequency smoothing            | 6                        |
+|                        | Output                         | Audio with noise removed |
+| Compressor             | Threshold                      | -24 dB                   |
+|                        | Ratio                          | 2.5                      |
+|                        | Knee width                     | 6 dB                     |
+|                        | Make-up gain                   | 8 dB                     |
+|                        | Attack                         | 3 ms                     |
+|                        | Release                        | 100 ms                   |
+|                        | Lookahead                      | 3 ms                     |
+| Noise gate             | Select Function                | Gate                     |
+|                        | Gate threshold                 | -42 dB                   |
+|                        | Gate frequencies above         | 0 kHz                    |
+|                        | Level reduction                | -24 dB                   |
+|                        | Attack                         | 10 ms                    |
+|                        | Hold                           | 200 ms                   |
+|                        | Decay                          | 300 ms                   |
+| Click removal          | Threshold                      | 200, then 150 if needed  |
+|                        | Max spike width                | 20, then 30 if needed    |
+| Loudness Normalization | Normalize                      | Perceived loudness       |
+|                        | to                             | -16 LUFS                 |
+|                        | Treat mono as dual mono        | on                       |
+| Limiter                | Threshold                      | -2 dB                    |
+|                        | Output                         | -2 dB                    |
+|                        | Knee width, Lookahead, Release | defaults                 |
+| De-esser (ffmpeg)      | i (intensity)                  | 0.5                      |
+|                        | m (max de-essing)              | 0.5                      |
+|                        | f (frequency content kept)     | 0.5                      |
+
+The gate threshold is the control that protects quiet words, and the level reduction is the control that sets the strength. To get more gate, lower the level reduction. Never raise the threshold for more gate. On 2026-11-06 the quietest word, "Spooky", had a tail at -37 to -44 dBFS in the master, 5 to 8 dB above the floor. After the reduction and the compressor it sat near -33 dBFS, and the floor near -50 dBFS, so -42 dB had 8 dB of margin on each side.
+
+An ffmpeg script for steps 3 to 10 is possible, with afftdn, acompressor, sidechaingate, adeclick, deesser, amix, and alimiter. The Audacity values do not map one to one onto those filters. Compare its result against an Audacity result on the same master before you trust it.
+
+### Lessons from the show of 2026-11-06
+
+- Turn on a Do Not Disturb Focus on the Mac, and silence the phone, before the hour-before steps. A notification played twice through the bed path and on the phone.
+- Remove the Noise Gate filter in OBS and keep the Noise Suppression filter. The bed covers the gaps on the stream, and the gate cut whole quiet words.
+- Drink water, not coffee, during the show. A slice of green apple cuts tongue clicks.
+- Turn away from the mic for a sip or a swallow. The Audacity master records it either way, so cut the rest in post.
+
 ## Prepare the next show
 
 1. Copy the title and the description from `live/<slug>/live.json` in the content folder. The next step removes that file.
