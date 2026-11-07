@@ -238,7 +238,7 @@ const describeResponse = (result: { status?: number; error?: string }): string =
 
 const runPipeline = async (
   deps: PublishDeps,
-  reason: PublishRecord['reason']
+  { reason, notify = true }: PublishOptions
 ): Promise<PublishOutcome> => {
   const { store, objectStore, config } = deps;
   const startedAt = deps.clock();
@@ -370,7 +370,7 @@ const runPipeline = async (
     };
   }
 
-  return verifyThenPing(deps, runLog, { feedSha256: feed.sha256, reason, files });
+  return verifyThenPing(deps, runLog, { feedSha256: feed.sha256, reason, files, notify });
 };
 
 type RunLog = ReturnType<typeof createPublishLog>;
@@ -379,14 +379,52 @@ type Finish = {
   feedSha256: string;
   reason: PublishRecord['reason'];
   files: PublishRecord['files'];
+  /* False holds the hub ping back, so a feed can go public before the index learns of it. */
+  notify: boolean;
+};
+
+export type PublishOptions = { reason: PublishRecord['reason']; notify?: boolean };
+
+const NO_NOTIFICATION_LABEL = 'no notification sent';
+
+const okOutcome = (
+  runLog: RunLog,
+  { feedSha256, files }: Finish,
+  pingLabel: string
+): Extract<PublishOutcome, { ok: true }> => ({
+  ok: true,
+  recordName: runLog.name,
+  uploaded: files.filter((file) => file.uploaded).map((file) => file.key),
+  skipped: files.filter((file) => !file.uploaded).length,
+  feedSha256,
+  pingLabel
+});
+
+const finishWithoutPing = async (
+  deps: PublishDeps,
+  runLog: RunLog,
+  finish: Finish
+): Promise<PublishOutcome> => {
+  await runLog.write({
+    verified: true,
+    pinged: false,
+    failedStep: undefined,
+    failedReason: undefined,
+    finishedAt: deps.clock().toISOString()
+  });
+
+  return okOutcome(runLog, finish, NO_NOTIFICATION_LABEL);
 };
 
 const pingAndFinish = async (
   deps: PublishDeps,
   runLog: RunLog,
-  { feedSha256, reason, files }: Finish
+  finish: Finish
 ): Promise<PublishOutcome> => {
-  const notified = await deps.notifier.notify({ feedUrl: deps.config.feedUrl, reason });
+  const notified = await deps.notifier.notify({
+    feedUrl: deps.config.feedUrl,
+    reason: finish.reason
+  });
 
   if (!notified.ok) {
     await runLog.write({ verified: true, failedStep: 'ping', failedReason: notified.reason });
@@ -408,14 +446,7 @@ const pingAndFinish = async (
     finishedAt: deps.clock().toISOString()
   });
 
-  return {
-    ok: true,
-    recordName: runLog.name,
-    uploaded: files.filter((file) => file.uploaded).map((file) => file.key),
-    skipped: files.filter((file) => !file.uploaded).length,
-    feedSha256,
-    pingLabel: notified.label
-  };
+  return okOutcome(runLog, finish, notified.label);
 };
 
 const verifyThenPing = async (
@@ -440,7 +471,9 @@ const verifyThenPing = async (
     };
   }
 
-  return pingAndFinish(deps, runLog, finish);
+  return finish.notify
+    ? pingAndFinish(deps, runLog, finish)
+    : finishWithoutPing(deps, runLog, finish);
 };
 
 const runGuarded = async (run: () => Promise<PublishOutcome>): Promise<PublishOutcome> => {
@@ -453,10 +486,12 @@ const runGuarded = async (run: () => Promise<PublishOutcome>): Promise<PublishOu
   }
 };
 
+/* A retry always pings: the record of a run that held the ping back never fails at verify or ping. */
 const finishOf = ({ record }: PublishEntry): Finish => ({
   feedSha256: record.feedSha256,
   reason: record.reason,
-  files: record.files
+  files: record.files,
+  notify: true
 });
 
 /* R28. Retry resumes the record of the failed run, so its times and its reason stay. */
@@ -470,7 +505,5 @@ export const resumeFromPing = (deps: PublishDeps, entry: PublishEntry): Promise<
     pingAndFinish(deps, createPublishLog(deps.store, entry.name, entry.record), finishOf(entry))
   );
 
-export const publish = (
-  deps: PublishDeps,
-  { reason }: { reason: PublishRecord['reason'] }
-): Promise<PublishOutcome> => runGuarded(() => runPipeline(deps, reason));
+export const publish = (deps: PublishDeps, options: PublishOptions): Promise<PublishOutcome> =>
+  runGuarded(() => runPipeline(deps, options));

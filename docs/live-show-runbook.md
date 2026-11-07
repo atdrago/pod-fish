@@ -44,6 +44,13 @@ curl -s -X POST -H 'Origin: http://127.0.0.1:5174' http://127.0.0.1:5174/api/pub
 
 Expected result: `"ok":true` and `"pingLabel":"index re-fetch accepted"`.
 
+To publish without the hub ping, for example when the index must not learn of the feed yet, send a JSON body with `notify` false. The expected `pingLabel` is then `"no notification sent"`. A later publish with no body sends the ping.
+
+```sh
+curl -s -X POST -H 'Origin: http://127.0.0.1:5174' -H 'Content-Type: application/json' \
+  -d '{"notify":false}' http://127.0.0.1:5174/api/publish
+```
+
 ## Day-before checks
 
 1. Check the bucket.

@@ -385,6 +385,24 @@ describe('verify (AE1)', () => {
   });
 });
 
+describe('a publish that holds the ping back', () => {
+  it('uploads, verifies, writes a finished record with no ping, and says so', async () => {
+    const deps = createDeps();
+    const result = await publish(deps, { reason: 'update', notify: false });
+
+    expect(result).toMatchObject({ ok: true, pingLabel: 'no notification sent' });
+    expect(events).toStrictEqual(['put:media', 'put:feed', 'verify:record-verified=false']);
+    expect(deps.notifier.notify).not.toHaveBeenCalled();
+
+    const [record] = await readRecords();
+
+    expect(record).toMatchObject({ feedUploaded: true, verified: true, pinged: false });
+    expect(record.pingResult).toBeUndefined();
+    expect(record.failedStep).toBeUndefined();
+    expect(record.finishedAt).toBeDefined();
+  });
+});
+
 describe('a failed ping', () => {
   it('keeps the record verified and unpinged, and names the reason', async () => {
     const deps = createDeps({
