@@ -266,6 +266,39 @@ The gate threshold is the control that protects quiet words, and the level reduc
 
 An ffmpeg script for steps 3 to 10 is possible, with afftdn, acompressor, sidechaingate, adeclick, deesser, amix, and alimiter. The Audacity values do not map one to one onto those filters. Compare its result against an Audacity result on the same master before you trust it.
 
+### Transcripts and chapters
+
+The feed links a transcript and a chapters file from each episode. Make them after step 9, from the exported WAV, with the two scripts in `scripts/transcripts/`. The speech model runs on the Mac and needs no account. On 2026-11-06 it did 80 minutes in 45 seconds.
+
+1. Transcribe the WAV. The first run downloads the English model once.
+
+   ```sh
+   swift scripts/transcripts/transcribe.swift <export>.wav <work folder>/segments.json
+   ```
+
+2. Build the VTT, SRT, and JSON files into the episode folder. The fixes file holds the names and terms that the model mishears, as `[pattern, replacement]` pairs, and lives in the content folder as `transcript-fixes.json`. Add a pair when a new name comes up.
+
+   ```sh
+   python3 -I scripts/transcripts/build_transcripts.py <work folder>/segments.json \
+     <content folder>/episodes/<slug> <slug> <content folder>/transcript-fixes.json
+   ```
+
+3. Read `<work folder>/segments.txt`, one line per sentence with its time, and write `episodes/<slug>/<slug>.chapters.json` by hand: `{"version":"1.2.0","chapters":[{"startTime":0,"title":"..."}]}` with the start in seconds.
+4. Reference the files in `episode.json` and raise its revision. The publisher hashes and uploads them with the audio.
+
+   ```json
+   "podcast": {
+     "transcripts": [
+       { "file": "<slug>.vtt", "type": "text/vtt", "language": "en" },
+       { "file": "<slug>.srt", "type": "application/x-subrip", "language": "en" },
+       { "file": "<slug>.json", "type": "application/json", "language": "en" }
+     ],
+     "chapters": { "file": "<slug>.chapters.json", "type": "application/json+chapters" }
+   }
+   ```
+
+The transcript is verbatim, so a skim of the VTT before publish catches a garbled line.
+
 ### Lessons from the show of 2026-11-06
 
 - Turn on a Do Not Disturb Focus on the Mac, and silence the phone, before the hour-before steps. A notification played twice through the bed path and on the phone.
