@@ -36,6 +36,14 @@ curl -s -D - -o /dev/null --max-time 3 https://pod.fish/pod-monster-cast/live.mp
 
 Expected result: `200` and `Content-Type: audio/mpeg` while BUTT streams. With no source, the answer is `404`.
 
+**Level check.** This command shows if the stream carries sound. Speak while it runs. The mount check cannot tell silence from speech, because BUTT sends bytes either way.
+
+```sh
+curl -s --max-time 5 https://pod.fish/pod-monster-cast/live.mp3 | ffmpeg -i pipe:0 -af volumedetect -f null - 2>&1 | grep -E 'mean_volume|max_volume'
+```
+
+Expected result: `max_volume` above -30 dB while you speak. A `max_volume` near -91 dB means silence: see [If a step fails](#if-a-step-fails).
+
 **Publish.** The Live tab has no Publish button. Use this command after you create or delete a live item.
 
 ```sh
@@ -87,7 +95,7 @@ curl -s -X POST -H 'Origin: http://127.0.0.1:5174' -H 'Content-Type: application
 
    Expected result: `Status = Issued`.
 
-5. Compare the BUTT settings with [Set up BUTT](#set-up-butt).
+5. Compare the OBS settings with [Set up OBS](#set-up-obs), and the BUTT settings with [Set up BUTT](#set-up-butt).
 6. Do the feed check.
 
    Expected result: The live item has `status="pending"` and the planned `start` and `end`.
@@ -96,8 +104,11 @@ curl -s -X POST -H 'Origin: http://127.0.0.1:5174' -H 'Content-Type: application
 
 **Warning:** A sleeping Mac stops BUTT. Do not close the lid during the show.
 
-1. Open System Settings, General, Date & Time. Make sure that "Set time and date automatically" is on.
-2. Check the clock.
+Start these steps at T-60. On 2026-11-13 they started at T-22, and an audio fault ate the margin.
+
+1. Turn on a Do Not Disturb Focus on the Mac, and silence the phone. A notification sound on the system output reaches the stream.
+2. Open System Settings, General, Date & Time. Make sure that "Set time and date automatically" is on.
+3. Check the clock.
 
    ```sh
    sntp -t 3 time.apple.com
@@ -105,34 +116,42 @@ curl -s -X POST -H 'Origin: http://127.0.0.1:5174' -H 'Content-Type: application
 
    Expected result: The first number is below 1 second.
 
-3. Open a terminal, and keep this command in it until the show ends.
+4. Open a terminal, and keep this command in it until the show ends.
 
    ```sh
    caffeinate -i
    ```
 
-4. Stop any app that runs now.
+5. Stop any app that runs now.
 
    ```sh
    lsof -nP -tiTCP:5174 -sTCP:LISTEN | xargs kill 2>/dev/null
    ```
 
-5. Open another terminal, and start the app. If the code changed, do `npm run build` first.
+6. Open another terminal, and start the app. If the code changed, do `npm run build` first.
 
    ```sh
    npm start
    ```
 
-6. Open `http://127.0.0.1:5174/live`.
+7. Open `http://127.0.0.1:5174/live`.
 
    Expected result: The item shows "Local: pending" and "Published: pending". "Unpublished changes" is 0. No Retry form shows.
 
-7. Start BUTT.
+8. Open OBS, and speak into the mic.
 
-   Expected result: The Live tab shows "Source connected" within 10 seconds.
+   Expected result: The "Mic/Aux" meter in the Audio Mixer moves, and peaks above -30 dB. If it does not move, see [Set up OBS](#set-up-obs).
 
-8. Start the local recording.
-9. Do the mount check.
+9. Open BUTT, and press **Play**. Speak into the mic.
+
+   Expected result: The BUTT levels move. The Live tab shows "Source connected" within 10 seconds. If BUTT connects but its levels do not move, see [If a step fails](#if-a-step-fails).
+
+10. Do the mount check and the level check.
+11. Open the Audacity project of the episode, press **End**, then press **R**.
+
+    Expected result: The Audacity meter moves when you speak.
+
+12. Put a glass of water and a slice of green apple next to the mic. Drink water, not coffee or milk, from now until the show ends. Coffee and milk thicken the saliva, and that makes the tongue clicks. Eat the apple slice just before Go live. The acid cuts the clicks for a while, so keep a second slice for the half-hour mark.
 
 ## Go live
 
@@ -183,7 +202,7 @@ Do these checks every 5 minutes:
    Expected result: The live item has `status="ended"`.
 
 3. Stop BUTT.
-4. Stop the local recording, and make sure that the file is saved.
+4. Stop the Audacity recording, and press Cmd+S.
 5. Pull to refresh in Pod Monster.
 
    Expected result: The banner clears on the next crawl, within about 5 minutes.
@@ -302,9 +321,15 @@ The transcript is verbatim, so a skim of the VTT before publish catches a garble
 ### Lessons from the show of 2026-11-06
 
 - Turn on a Do Not Disturb Focus on the Mac, and silence the phone, before the hour-before steps. A notification played twice through the bed path and on the phone.
-- Remove the Noise Gate filter in OBS and keep the Noise Suppression filter. The bed covers the gaps on the stream, and the gate cut whole quiet words.
-- Drink water, not coffee, during the show. A slice of green apple cuts tongue clicks.
+- The Noise Gate filter in OBS cut whole quiet words at its thresholds of that day (open -26 dB, close -35 dB, hold 200 ms, release 150 ms). The show of 2026-11-13 lowered them. [Set up OBS](#set-up-obs) holds the values.
+- Drink water, not coffee or milk, before and during the show. A slice of green apple cuts tongue clicks. Step 12 of the hour-before steps holds both.
 - Turn away from the mic for a sip or a swallow. The Audacity master records it either way, so cut the rest in post.
+
+### Lessons from the show of 2026-11-13
+
+- BUTT connected and streamed silence for 20 minutes. The OBS chain delivered no audio to BlackHole 16ch, and a restart of OBS and BUTT fixed it. The broken link is unknown. The BUTT levels show the fault at once: they must move before Go live. Steps 8 to 10 of the hour-before steps now hold that sound check, and the level check proves the sound on the public stream.
+- Go live was 21 minutes late. A late Go live keeps the two-hour length from the press time, so the item ended at 09:21 instead of 09:00.
+- The raw mic in BUTT is the fallback, not the setup. The stream wants the OBS filters, so the BUTT primary device is BlackHole 16ch.
 
 ## Prepare the next show
 
@@ -322,16 +347,17 @@ The transcript is verbatim, so a skim of the VTT before publish catches a garble
 
 ## If a step fails
 
-| The Live tab shows                                                                            | What to do                                                                                                                                                       |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Failed at mount`                                                                             | Go live found no audio. Check BUTT, do the mount check, and press Go live again.                                                                                 |
-| `Failed at upload` or `Failed at feed`                                                        | The public feed stays on its old version. Check the network, select "Publish again", and press Retry.                                                            |
-| `Failed at verify`, or "A publish did not finish: the public feed matches no publish record." | Press Retry one time with "Verify again". If that fails, select "Publish again". "Verify again" cannot pass when the public feed holds the bytes of another run. |
-| `Failed at ping`                                                                              | The public feed is correct. Press Retry one time with "Ping again". If that fails, continue the show. Pod Monster finds the change on its next crawl.            |
-| `Failed at lock`                                                                              | Another publish runs. Wait, then press the control again. A stalled upload can hold the lock for 10 seconds for each MB.                                         |
-| A Retry form with a disabled button, after a page reload                                      | A publish still runs, and the form can be false. Wait until the run ends.                                                                                        |
-| "No source connected"                                                                         | Check BUTT, and do the mount check.                                                                                                                              |
-| "Source status unknown"                                                                       | The app cannot read the status page. Do the mount check. Go live still checks the mount.                                                                         |
+| The Live tab shows                                                                            | What to do                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Failed at mount`                                                                             | Go live found no audio. Check BUTT, do the mount check, and press Go live again.                                                                                                                                                                                                                                                                                                                       |
+| `Failed at upload` or `Failed at feed`                                                        | The public feed stays on its old version. Check the network, select "Publish again", and press Retry.                                                                                                                                                                                                                                                                                                  |
+| `Failed at verify`, or "A publish did not finish: the public feed matches no publish record." | Press Retry one time with "Verify again". If that fails, select "Publish again". "Verify again" cannot pass when the public feed holds the bytes of another run.                                                                                                                                                                                                                                       |
+| `Failed at ping`                                                                              | The public feed is correct. Press Retry one time with "Ping again". If that fails, continue the show. Pod Monster finds the change on its next crawl.                                                                                                                                                                                                                                                  |
+| `Failed at lock`                                                                              | Another publish runs. Wait, then press the control again. A stalled upload can hold the lock for 10 seconds for each MB.                                                                                                                                                                                                                                                                               |
+| A Retry form with a disabled button, after a page reload                                      | A publish still runs, and the form can be false. Wait until the run ends.                                                                                                                                                                                                                                                                                                                              |
+| "No source connected"                                                                         | Check BUTT, and do the mount check.                                                                                                                                                                                                                                                                                                                                                                    |
+| "Source status unknown"                                                                       | The app cannot read the status page. Do the mount check. Go live still checks the mount.                                                                                                                                                                                                                                                                                                               |
+| BUTT shows connected, but its levels do not move                                              | BUTT receives silence from BlackHole 16ch. To stay on air, set the BUTT primary audio device to "Scarlett Solo USB" and press Save. That sends the raw mic with no filter. Then quit and reopen OBS, check the OBS chain in the order of [Set up OBS](#set-up-obs), quit and reopen BUTT, and switch BUTT back to "BlackHole 16ch" when the "Mic/Aux" meter moves. On 2026-11-13 the restart fixed it. |
 
 ## No-go for the show
 
@@ -477,6 +503,41 @@ Go live at T-10 in every case. `<ttl>5</ttl>` keeps the crawl of Pod Monster at 
 5. If a podping.cloud token exists, request a new one.
 6. Write the new values in `.env`, and start the app again.
 
+## Audio chain
+
+The mic goes through OBS, and the bed goes through the system output. BUTT mixes the two and sends the mix to Icecast. Audacity records the raw mic beside them.
+
+| Link           | From                                                      | To                               |
+| -------------- | --------------------------------------------------------- | -------------------------------- |
+| Mic            | Scarlett Solo USB, input 1                                | OBS, the "Mic/Aux" source        |
+| OBS filters    | "Noise Suppression", then "Noise Gate"                    | The OBS monitoring output        |
+| OBS monitoring | "BlackHole 16ch"                                          | BUTT, the primary audio device   |
+| Bed            | Any app that plays on the system output                   | "Streaming Audio Bed"            |
+| System output  | "Streaming Audio Bed": "BlackHole 2ch" and the headphones | BUTT, the secondary audio device |
+| Master         | Scarlett Solo USB, with no filter                         | Audacity                         |
+
+"Streaming Audio Bed" is a Multi-Output Device in Audio MIDI Setup. Keep it as the system output during the show, so you hear the bed and the stream receives it. Every system sound reaches the stream the same way.
+
+OBS must stay open during the show. Its audio stops with it.
+
+### Set up OBS
+
+1. Open Settings, Audio. Under "Global Audio Devices", set "Mic/Auxiliary Audio" to "Scarlett Solo USB".
+2. Under "Advanced", set "Monitoring Device" to "BlackHole 16ch". Press OK.
+3. In the Audio Mixer, press the gear next to "Mic/Aux", then "Advanced Audio Properties". Set "Audio Monitoring" of Mic/Aux to "Monitoring Enabled".
+4. Press the gear again, then "Filters". The list must hold "Noise Suppression" first and "Noise Gate" second, both on. Set the gate values below.
+5. Speak into the mic. The "Mic/Aux" meter must move. If it does not, open System Settings, Privacy & Security, Microphone, and turn on OBS.
+
+| Control         | Value  |
+| --------------- | ------ |
+| Open Threshold  | -36 dB |
+| Close Threshold | -42 dB |
+| Attack Time     | 10 ms  |
+| Hold Time       | 500 ms |
+| Release Time    | 300 ms |
+
+The gate sees the floor after the suppression, so keep the filter order. To check the thresholds, say a sentence at your quietest show voice. The open threshold must sit 3 dB under its peak. The close threshold must sit 6 dB under the open threshold, and at least 6 dB above the floor that the meter shows while you are silent.
+
 ## Stream server
 
 | Item           | Value                                            |
@@ -515,17 +576,20 @@ fly deploy -a pod-fish --ha=false --primary-region iad \
 
 ### Set up BUTT
 
-| Setting          | Value                                    |
-| ---------------- | ---------------------------------------- |
-| Server type      | Icecast                                  |
-| Address          | `pod.fish`                               |
-| Port             | `443`                                    |
-| TLS              | On                                       |
-| Mount            | `pod-monster-cast/live.mp3`              |
-| User             | `source`                                 |
-| Password         | The source password                      |
-| Format           | MP3                                      |
-| Icecast protocol | PUT or SOURCE on 2.5.0. SOURCE on 2.4.4. |
+| Setting                | Value                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| Server type            | Icecast                                                                                            |
+| Address                | `pod.fish`                                                                                         |
+| Port                   | `443`                                                                                              |
+| TLS                    | On                                                                                                 |
+| Mount                  | `pod-monster-cast/live.mp3`                                                                        |
+| User                   | `source`                                                                                           |
+| Password               | The source password                                                                                |
+| Format                 | MP3                                                                                                |
+| Icecast protocol       | PUT or SOURCE on 2.5.0. SOURCE on 2.4.4.                                                           |
+| Primary audio device   | `BlackHole 16ch`, the OBS output. `Scarlett Solo USB` is the fallback: the raw mic with no filter. |
+| Secondary audio device | `BlackHole 2ch`, the bed                                                                           |
+| Record                 | On at connect, MP3 at 192 kbps, into `streams/` in the content folder                              |
 
 ### Check the server
 
