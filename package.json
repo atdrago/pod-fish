@@ -21,7 +21,8 @@
     "test:unit": "vitest",
     "test": "npm run test:unit -- --run",
     "fix": "svelte-kit sync && prettier --write . && eslint . --fix --max-warnings 0",
-    "knip": "knip"
+    "knip": "knip",
+    "master": "node --env-file-if-exists=.env scripts/audio/master-episode.ts"
   },
   "dependencies": {
     "aws4fetch": "1.0.20",
