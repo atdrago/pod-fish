@@ -227,67 +227,48 @@ An ended item stays in the feed until you delete it. [Prepare the next show](#pr
 
 ## Post-production
 
-Make the episode from the Audacity master, not from the BUTT recording. The BUTT recording holds the live gate, and a gate cannot be undone. The values below come from the show of 2026-11-06. That master had its peaks near 0 dBFS, an average level of -26 LUFS, and a room floor 40 dB under the voice. Check the next master against those three numbers before you apply the values.
+Make the episode from the Audacity master, not from the BUTT recording. The BUTT recording holds the live gate, and a gate cannot be undone.
 
-Do the steps in this order. Every effect is in the Effect menu of Audacity 4.
+Audacity does the cuts and holds the bed. The script `npm run master` does the rest in one command: the noise reduction, the compressor, the gate, the click removal, the loudness, the limiter, the bed mix, the de-esser, and the MP3. Its values are the Audacity values of the episode of 2026-11-06. On 2026-11-13 the result of the script won a blind listen of one minute against that episode.
 
 1. Export the master as WAV outside the content folder before any edit.
 2. Trim the head and the tail. Cut mistakes, notification sounds, sips, and swallows: select the region on the voice track and press Shift+Delete, so the gap closes. Do every cut before the bed goes in.
-3. Noise reduction, under "Noise removal and repair". Select two to three seconds of room noise with no breath, press "Get noise profile", double-click an empty part of the voice track to select all of it, then open the effect again and apply the values below.
-4. Compressor, under "Volume and compression", on the whole voice track.
-5. Noise gate, under "Noise removal and repair", on the whole voice track. Do not take the threshold from "Analyze Noise Level". Its suggestion sits one decibel above the floor, and that cuts quiet words.
-6. Click removal, under "Noise removal and repair". Test on 30 seconds of the worst passage first. Stop when a "t" or a "k" sounds soft.
-7. Import the bed with Cmd+Shift+I. It lands on a new track. Place the clip, then set the track volume so the bed sits 18 to 24 dB under the voice.
-8. Loudness Normalization, then Limiter, under "Volume and compression", on the voice track only. On both tracks, the normalization lifts the bed to the level of the voice.
-9. Export with Cmd+Shift+E: full project audio, WAV, to a folder outside the content folder.
-10. Run the de-esser and the MP3 encode in one ffmpeg command. Audacity 4.0.2 has no de-esser. The ffmpeg `deesser` filter ducks the loud "s" peaks only: on the master of 2026-11-06, intensity 0.5 cut the ess peaks by 7 dB and the average of the 4.5 to 10 kHz band by 1 dB. To hear what the filter removes, replace `s=o` with `s=e` and play the result.
+3. Import the bed with Cmd+Shift+I. It lands on a new track. Place the clip and set its fade. The track volume does not matter, because the script sets the bed 21 LU under the voice.
+4. Export with Cmd+Shift+E and choose "Export to computer". In the "Export audio" dialog, set "Type" to "Tracks as separate audio files", "Format" to WAV, "Channels" to "Mono", and "Folder" to a folder outside the content folder. Turn on "Number files in track order". Turn off "Trim blank space before first clip", so the bed file keeps its place on the timeline. Read the two names under "File name preview", then press "Export". The first file is the voice, the second is the bed.
+5. Run the script from the pod-fish folder. Leave out `--bed` and `--bed-at` when the episode has no bed.
 
-```sh
-ffmpeg -i <export>.wav -af deesser=i=0.5:m=0.5:f=0.5:s=o -ar 44100 -ac 1 \
-  -c:a libmp3lame -b:a 128k episodes/<slug>/media/<slug>.mp3
-```
+   ```sh
+   npm run master -- --in <folder>/<voice file>.wav --bed <folder>/<bed file>.wav --bed-at 0 --slug <slug>
+   ```
 
-11. Write the sha256, the byte length, and the duration into `episodes/<slug>/episode.json`, raise its revision, and do the publish command. Ask for the publish confirmation first.
+   The MP3 lands in `episodes/<slug>/media/<slug>.mp3`, and the script prints the media record. Check two log lines. `master_noise_window` names the two seconds that give the noise profile, with their level. On the master of 2026-11-06 the window sat at -64 dBFS. A level above -50 dBFS means the window holds a sound, not room noise: run the script again with `--noise-at <seconds>`, the start of two seconds of plain room noise. `master_voice` shows the measured loudness and the gain. On that master the gain was 7.1 dB.
 
-| Effect                 | Control                        | Value                    |
-| ---------------------- | ------------------------------ | ------------------------ |
-| Noise reduction        | Noise reduction                | 12 dB                    |
-|                        | Sensitivity                    | 6                        |
-|                        | Frequency smoothing            | 6                        |
-|                        | Output                         | Audio with noise removed |
-| Compressor             | Threshold                      | -24 dB                   |
-|                        | Ratio                          | 2.5                      |
-|                        | Knee width                     | 6 dB                     |
-|                        | Make-up gain                   | 8 dB                     |
-|                        | Attack                         | 3 ms                     |
-|                        | Release                        | 100 ms                   |
-|                        | Lookahead                      | 3 ms                     |
-| Noise gate             | Select Function                | Gate                     |
-|                        | Gate threshold                 | -42 dB                   |
-|                        | Gate frequencies above         | 0 kHz                    |
-|                        | Level reduction                | -24 dB                   |
-|                        | Attack                         | 10 ms                    |
-|                        | Hold                           | 200 ms                   |
-|                        | Decay                          | 300 ms                   |
-| Click removal          | Threshold                      | 200, then 150 if needed  |
-|                        | Max spike width                | 20, then 30 if needed    |
-| Loudness Normalization | Normalize                      | Perceived loudness       |
-|                        | to                             | -16 LUFS                 |
-|                        | Treat mono as dual mono        | on                       |
-| Limiter                | Threshold                      | -2 dB                    |
-|                        | Output                         | -2 dB                    |
-|                        | Knee width, Lookahead, Release | defaults                 |
-| De-esser (ffmpeg)      | i (intensity)                  | 0.5                      |
-|                        | m (max de-essing)              | 0.5                      |
-|                        | f (frequency content kept)     | 0.5                      |
+6. Make the transcript and the chapters from the voice WAV, as the next section says.
+7. Paste the media record into the `media` field of `episodes/<slug>/episode.json`, raise its revision, and do the publish command. Ask for the publish confirmation first.
 
-The gate threshold is the control that protects quiet words, and the level reduction is the control that sets the strength. To get more gate, lower the level reduction. Never raise the threshold for more gate. On 2026-11-06 the quietest word, "Spooky", had a tail at -37 to -44 dBFS in the master, 5 to 8 dB above the floor. After the reduction and the compressor it sat near -33 dBFS, and the floor near -50 dBFS, so -42 dB had 8 dB of margin on each side.
+The script holds the chain in `scripts/audio/masterChain.ts`, in this order:
 
-An ffmpeg script for steps 3 to 10 is possible, with afftdn, acompressor, sidechaingate, adeclick, deesser, amix, and alimiter. The Audacity values do not map one to one onto those filters. Compare its result against an Audacity result on the same master before you trust it.
+| Stage           | ffmpeg filter | Values                                                                               |
+| --------------- | ------------- | ------------------------------------------------------------------------------------ |
+| Noise reduction | afftdn        | 12 dB. The profile shape comes from the quietest two seconds, the level is tracked   |
+| Compressor      | acompressor   | Threshold -24 dB, ratio 2.5, knee 6 dB, make-up 8 dB, attack 3 ms, release 100 ms    |
+| Noise gate      | agate         | Threshold -42 dB, reduction -24 dB, attack 10 ms, release 500 ms for hold plus decay |
+| Click removal   | adeclick      | Defaults                                                                             |
+| Loudness        | volume        | The gain from the measured loudness to -16 LUFS                                      |
+| Limiter         | alimiter      | -2 dB                                                                                |
+| Bed             | amix          | 21 LU under the voice, at its place in the bed file                                  |
+| De-esser        | deesser       | Intensity 0.5, max de-essing 0.5, frequency content 0.5                              |
+| MP3             | libmp3lame    | 128 kbps, 44.1 kHz, mono                                                             |
+
+The file lands 0.5 to 0.9 LU under -16 LUFS, because the limiter and the de-esser come after the gain. The episode of 2026-11-06 measured -16.4 LUFS, and the script gives -16.8 LUFS on the same master.
+
+The gate threshold is the control that protects quiet words, and the level reduction is the control that sets the strength. To get more gate, lower the level reduction. Never raise the threshold for more gate. On 2026-11-06 the quietest word, "Spooky", had a tail at -37 to -44 dBFS in the master, 5 to 8 dB above the floor. After the reduction and the compressor it sat near -33 dBFS, and the floor near -50 dBFS, so -42 dB had 8 dB of margin on each side. The gate must stay after the compressor. Before the 8 dB of make-up gain, the same threshold is 8 dB more aggressive and cuts word tails.
+
+The noise reduction must be the profile kind, not RNNoise. RNNoise drops every gap to silence at once and leaves noise under the words, so each pause sounds like a gate. The profile kind takes the same 12 dB off the gaps and off the words, so the room sounds the same in both.
 
 ### Transcripts and chapters
 
-The feed links a transcript and a chapters file from each episode. Make them after step 9, from the exported WAV, with the two scripts in `scripts/transcripts/`. The speech model runs on the Mac and needs no account. On 2026-11-06 it did 80 minutes in 45 seconds.
+The feed links a transcript and a chapters file from each episode. Make them after step 5, from the voice WAV of step 4, with the two scripts in `scripts/transcripts/`. The speech model runs on the Mac and needs no account. On 2026-11-06 it did 80 minutes in 45 seconds.
 
 1. Transcribe the WAV. The first run downloads the English model once.
 
@@ -330,6 +311,7 @@ The transcript is verbatim, so a skim of the VTT before publish catches a garble
 - BUTT connected and streamed silence for 20 minutes. The OBS chain delivered no audio to BlackHole 16ch, and a restart of OBS and BUTT fixed it. The broken link is unknown. The BUTT levels show the fault at once: they must move before Go live. Steps 8 to 10 of the hour-before steps now hold that sound check, and the level check proves the sound on the public stream.
 - Go live was 21 minutes late. A late Go live keeps the two-hour length from the press time, so the item ended at 09:21 instead of 09:00.
 - The raw mic in BUTT is the fallback, not the setup. The stream wants the OBS filters, so the BUTT primary device is BlackHole 16ch.
+- RNNoise in post-production sounds gated, even with the gate off: it drops every gap to silence at once and leaves noise under the words. A one-minute blind listen chose the profile kind of noise reduction, which takes the same 12 dB off the gaps and off the words. [Post-production](#post-production) holds the chain, and `npm run master` runs it.
 
 ## Prepare the next show
 
