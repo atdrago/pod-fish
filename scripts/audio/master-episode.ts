@@ -172,6 +172,9 @@ function main(): void {
       renderGraph({ noiseProfile, voiceGainDb, bed }),
       '-map',
       '[out]',
+      // The WAV export of Audacity carries its track name and number as tags.
+      '-map_metadata',
+      '-1',
       '-ar',
       '44100',
       '-ac',
