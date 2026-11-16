@@ -229,7 +229,7 @@ An ended item stays in the feed until you delete it. [Prepare the next show](#pr
 
 Make the episode from the Audacity master, not from the BUTT recording. The BUTT recording holds the live gate, and a gate cannot be undone.
 
-Audacity does the cuts and holds the bed. The script `npm run master` does the rest in one command: the noise reduction, the compressor, the gate, the click removal, the loudness, the limiter, the bed mix, the de-esser, and the MP3. Its values are the Audacity values of the episode of 2026-11-06. On 2026-11-13 the result of the script won a blind listen of one minute against that episode.
+Audacity does the cuts and holds the bed. The script `npm run master` does the rest in one command: the noise reduction, the compressor, the gate, the click removal, the loudness, the bed mix, the limiter, the de-esser, and the MP3. Its values are the Audacity values of the episode of 2026-11-06. On 2026-11-13 the result of the script won a blind listen of one minute against that episode.
 
 1. Export the master as WAV outside the content folder before any edit.
 2. Trim the head and the tail. Cut mistakes, notification sounds, sips, and swallows: select the region on the voice track and press Shift+Delete, so the gap closes. Do every cut before the bed goes in.
@@ -255,8 +255,8 @@ The script holds the chain in `scripts/audio/masterChain.ts`, in this order:
 | Noise gate      | agate         | Threshold -42 dB, reduction -24 dB, attack 10 ms, release 500 ms for hold plus decay |
 | Click removal   | adeclick      | Defaults                                                                             |
 | Loudness        | volume        | The gain from the measured loudness to -16 LUFS                                      |
-| Limiter         | alimiter      | -2 dB                                                                                |
 | Bed             | amix          | The same lift as the voice, at its place in the bed file                             |
+| Limiter         | alimiter      | -2 dB, on the mix                                                                    |
 | De-esser        | deesser       | Intensity 0.5, max de-essing 0.5, frequency content 0.5                              |
 | MP3             | libmp3lame    | 128 kbps, 44.1 kHz, mono                                                             |
 

@@ -187,12 +187,16 @@ describe('renderGraph', () => {
     const graph = renderGraph({ noiseProfile: PROFILE, voiceGainDb: 10.3 });
 
     expect(graph).toContain(`[0:a]afftdn=nt=c:bn=${PROFILE}:tn=1:nr=12`);
-    expect(graph).toContain('volume=10.30dB,alimiter=limit=0.7943:level=false');
-    expect(graph).toMatch(/\[voice\]deesser=i=0\.5:m=0\.5:f=0\.5:s=o\[out\]$/);
+    expect(graph).toContain(
+      'volume=10.30dB,aformat=sample_rates=44100:channel_layouts=mono[voice]'
+    );
+    expect(graph).toMatch(
+      /\[voice\]alimiter=limit=0\.7943:level=false,deesser=i=0\.5:m=0\.5:f=0\.5:s=o\[out\]$/
+    );
     expect(graph).not.toContain('amix');
   });
 
-  it('delays and mixes the bed under the voice', () => {
+  it('delays and mixes the bed, then limits the mix', () => {
     const graph = renderGraph({
       noiseProfile: PROFILE,
       voiceGainDb: 10.3,
@@ -202,7 +206,7 @@ describe('renderGraph', () => {
     expect(graph).toContain('[1:a]aformat=sample_rates=44100:channel_layouts=mono,volume=-20.00dB');
     expect(graph).toContain('adelay=delays=12500:all=1[bed]');
     expect(graph).toContain('[voice][bed]amix=inputs=2:duration=first:normalize=0[mix]');
-    expect(graph).toMatch(/\[mix\]deesser=.*\[out\]$/);
+    expect(graph).toMatch(/\[mix\]alimiter=limit=0\.7943:level=false,deesser=.*\[out\]$/);
   });
 });
 

@@ -200,14 +200,15 @@ export type RenderOptions = {
 };
 
 export function renderGraph({ noiseProfile, voiceGainDb, bed }: RenderOptions): string {
-  const voice = `[0:a]${voiceChain(noiseProfile)},volume=${decibels(voiceGainDb)},${LIMITER},${MONO_44K}[voice]`;
+  const voice = `[0:a]${voiceChain(noiseProfile)},volume=${decibels(voiceGainDb)},${MONO_44K}[voice]`;
   if (bed === undefined) {
-    return `${voice};[voice]${DEESSER}[out]`;
+    return `${voice};[voice]${LIMITER},${DEESSER}[out]`;
   }
   const delayMs = Math.round(bed.startSeconds * 1000);
   const bedChain = `[1:a]${MONO_44K},volume=${decibels(bed.gainDb)},adelay=delays=${String(delayMs)}:all=1[bed]`;
+  // The limiter comes after the mix. A bed on top of the limited voice reached +1 dBTP.
   const mix = '[voice][bed]amix=inputs=2:duration=first:normalize=0[mix]';
-  return `${voice};${bedChain};${mix};[mix]${DEESSER}[out]`;
+  return `${voice};${bedChain};${mix};[mix]${LIMITER},${DEESSER}[out]`;
 }
 
 export type MediaRecord = {
