@@ -6,7 +6,6 @@
 // docs/live-show-runbook.md, "Post-production", holds the values and the reasons.
 
 export const TARGET_LUFS = -16;
-export const BED_UNDER_VOICE_LU = 21;
 // The noise profile comes from the quietest window of this length. The sample skips a margin at
 // each end of the window, because a sample that touches a word tail takes the shape of the voice.
 export const NOISE_WINDOW_SECONDS = 2;
@@ -163,7 +162,9 @@ export function measureGraph(noiseProfile: string): string {
   return `${voiceChain(noiseProfile)},${LOUDNESS_MEASURE}`;
 }
 
-export const BED_MEASURE_GRAPH = LOUDNESS_MEASURE;
+// The bed keeps the balance set by ear in Audacity. It gets the lift of the voice from the raw
+// master to the target, so the raw master is measured with no chain.
+export const RAW_MEASURE_GRAPH = LOUDNESS_MEASURE;
 
 export function gainDb(measuredLufs: number, targetLufs: number): number {
   return targetLufs - measuredLufs;

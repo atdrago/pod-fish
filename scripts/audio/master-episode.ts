@@ -15,9 +15,8 @@ import { basename, dirname, join } from 'node:path';
 import process from 'node:process';
 
 import {
-  BED_MEASURE_GRAPH,
-  BED_UNDER_VOICE_LU,
   NOISE_WINDOW_SECONDS,
+  RAW_MEASURE_GRAPH,
   TARGET_LUFS,
   gainDb,
   measureGraph,
@@ -147,10 +146,10 @@ function main(): void {
 
   let bed: { gainDb: number; startSeconds: number } | undefined;
   if (options.bed !== undefined) {
-    const bedLufs = measureLufs(options.bed.file, BED_MEASURE_GRAPH);
-    const bedGainDb = gainDb(bedLufs, TARGET_LUFS - BED_UNDER_VOICE_LU);
+    const rawVoiceLufs = measureLufs(options.input, RAW_MEASURE_GRAPH);
+    const bedGainDb = gainDb(rawVoiceLufs, TARGET_LUFS);
     log('master_bed', {
-      lufs: bedLufs.toFixed(1),
+      rawVoiceLufs: rawVoiceLufs.toFixed(1),
       gainDb: bedGainDb.toFixed(2),
       startSeconds: String(options.bed.startSeconds)
     });

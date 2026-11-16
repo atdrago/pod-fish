@@ -233,7 +233,7 @@ Audacity does the cuts and holds the bed. The script `npm run master` does the r
 
 1. Export the master as WAV outside the content folder before any edit.
 2. Trim the head and the tail. Cut mistakes, notification sounds, sips, and swallows: select the region on the voice track and press Shift+Delete, so the gap closes. Do every cut before the bed goes in.
-3. Import the bed with Cmd+Shift+I. It lands on a new track. Place the clip and set its fade. The track volume does not matter, because the script sets the bed 21 LU under the voice.
+3. Import the bed with Cmd+Shift+I. It lands on a new track. Place the clip, set its fade, and set the track volume by ear against the voice. The script keeps that balance: it lifts the bed by the same amount as the voice, and nothing else. On 2026-11-13 the bed sat 7 LU under the voice.
 4. Export with Cmd+Shift+E and choose "Export to computer". In the "Export audio" dialog, set "Type" to "Tracks as separate audio files", "Format" to WAV, "Channels" to "Mono", and "Folder" to a folder outside the content folder. Turn on "Number files in track order". Turn off "Trim blank space before first clip", so the bed file keeps its place on the timeline. Read the two names under "File name preview", then press "Export". The first file is the voice, the second is the bed.
 5. Run the script from the pod-fish folder. Leave out `--bed` and `--bed-at` when the episode has no bed.
 
@@ -256,7 +256,7 @@ The script holds the chain in `scripts/audio/masterChain.ts`, in this order:
 | Click removal   | adeclick      | Defaults                                                                             |
 | Loudness        | volume        | The gain from the measured loudness to -16 LUFS                                      |
 | Limiter         | alimiter      | -2 dB                                                                                |
-| Bed             | amix          | 21 LU under the voice, at its place in the bed file                                  |
+| Bed             | amix          | The same lift as the voice, at its place in the bed file                             |
 | De-esser        | deesser       | Intensity 0.5, max de-essing 0.5, frequency content 0.5                              |
 | MP3             | libmp3lame    | 128 kbps, 44.1 kHz, mono                                                             |
 

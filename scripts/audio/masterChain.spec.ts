@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  RAW_MEASURE_GRAPH,
   gainDb,
   measureGraph,
   mediaRecord,
@@ -145,6 +146,13 @@ describe('voiceChain', () => {
     expect(measureGraph(PROFILE)).toBe(
       `${voiceChain(PROFILE)},loudnorm=I=-16:TP=-2:LRA=20:print_format=json`
     );
+  });
+});
+
+describe('RAW_MEASURE_GRAPH', () => {
+  it('measures the loudness with no chain', () => {
+    expect(RAW_MEASURE_GRAPH).toContain('loudnorm');
+    expect(RAW_MEASURE_GRAPH).not.toContain('afftdn');
   });
 });
 
