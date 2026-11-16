@@ -7,14 +7,16 @@ file with one line per segment lands next to the segments file, for a read of th
 and for the chapter titles.
 
 The optional fixes file is a JSON array of [pattern, replacement] pairs. Each pattern is a
-Python regular expression, and the pairs apply in order to every cue and every text line. It
-holds the names and terms that the speech model mishears, so it belongs in the content folder,
-not in this repository.
+Python regular expression. The pairs apply in order to the words before the cue build, so a fix
+can join two words that a cue break would separate, and to every text line. The file holds the
+names and terms that the speech model mishears, so it belongs in the content folder, not in
+this repository.
 """
 
 import json
 import re
 import sys
+from bisect import bisect_right
 from pathlib import Path
 
 MAX_CUE_CHARS = 84
@@ -39,22 +41,66 @@ def load_words(segments):
             words.extend(timed)
             continue
         # No word timing: spread the text evenly over the segment.
-        tokens = segment["text"].split()
-        if not tokens:
-            continue
-        total = sum(max(1, len(token)) for token in tokens)
-        duration = segment["end"] - segment["start"]
-        elapsed = 0
-        for token in tokens:
-            start = segment["start"] + duration * elapsed / total
-            elapsed += max(1, len(token))
-            end = segment["start"] + duration * elapsed / total
-            words.append({"text": token, "start": start, "end": end})
+        words.extend(spread(segment["text"].split(), segment["start"], segment["end"]))
     words.sort(key=lambda word: word["start"])
     return words
 
 
-def build_cues(words, fixes):
+def spread(tokens, start, end):
+    """Time the tokens evenly over the span, by their length."""
+    if not tokens:
+        return []
+    total = sum(max(1, len(token)) for token in tokens)
+    duration = end - start
+    words = []
+    elapsed = 0
+    for token in tokens:
+        token_start = start + duration * elapsed / total
+        elapsed += max(1, len(token))
+        token_end = start + duration * elapsed / total
+        words.append({"text": token, "start": token_start, "end": token_end})
+    return words
+
+
+def fix_words(words, fixes):
+    for pattern, replacement in fixes:
+        words = fix_words_once(words, pattern, replacement)
+    return words
+
+
+def fix_words_once(words, pattern, replacement):
+    # A fix runs on the whole word stream, not on each cue, so "pod roll" becomes one word
+    # even when a cue break falls between "pod" and "roll". The words of each match form a run.
+    # The run is substituted as one text and timed again over the span of its words.
+    text = " ".join(word["text"] for word in words)
+    starts = []
+    offset = 0
+    for word in words:
+        starts.append(offset)
+        offset += len(word["text"]) + 1
+    runs = []
+    for match in pattern.finditer(text):
+        if match.end() == match.start():
+            continue
+        first = bisect_right(starts, match.start()) - 1
+        last = bisect_right(starts, match.end() - 1) - 1
+        if runs and first <= runs[-1][1]:
+            runs[-1][1] = max(runs[-1][1], last)
+        else:
+            runs.append([first, last])
+    result = []
+    copied = 0
+    for first, last in runs:
+        result.extend(words[copied:first])
+        run = " ".join(word["text"] for word in words[first : last + 1])
+        tokens = pattern.sub(replacement, run).split()
+        result.extend(spread(tokens, words[first]["start"], words[last]["end"]))
+        copied = last + 1
+    result.extend(words[copied:])
+    return result
+
+
+def build_cues(words):
     cues = []
     current = []
 
@@ -82,7 +128,7 @@ def build_cues(words, fixes):
         if index + 1 < len(cues):
             end = min(end, cues[index + 1][0]["start"])
         end = max(end, start + 0.3)
-        text = apply_fixes(" ".join(item["text"] for item in cue), fixes)
+        text = " ".join(item["text"] for item in cue)
         result.append({"start": start, "end": end, "text": text})
     return result
 
@@ -164,7 +210,7 @@ def main():
     base = sys.argv[3]
     fixes = load_fixes(sys.argv[4] if len(sys.argv) == 5 else None)
     segments = json.loads(segments_path.read_text(encoding="utf-8"))
-    cues = build_cues(load_words(segments), fixes)
+    cues = build_cues(fix_words(load_words(segments), fixes))
     write_vtt(cues, folder / f"{base}.vtt")
     write_srt(cues, folder / f"{base}.srt")
     write_json(cues, folder / f"{base}.json")
